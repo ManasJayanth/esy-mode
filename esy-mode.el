@@ -38,6 +38,7 @@
                  obtain more info about the project"
   (let* ((json-str (shell-command-to-string (format "esy status -P %s"
 						    project-path))) 
+	 (json-false 'nil)
 	 (json-object-type 'hash-table)) 
 
     (condition-case nil 
@@ -69,7 +70,7 @@
   "Minor mode for esy - the package manager for Reason/OCaml" 
   :lighter " esy"
   (let* ((project (esy/project--of-path (file-name-directory buffer-file-name)
-  (message "esy-mode activated"))
+  (message "esy-mode activated"))))))
 
 ;;;###autoload
 (add-hook 'reason-mode-hook 'esy-mode)

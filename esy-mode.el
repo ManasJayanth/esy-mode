@@ -72,16 +72,20 @@
 (define-minor-mode esy-mode () 
   "Minor mode for esy - the package manager for Reason/OCaml" 
   :lighter " esy"
-  (let* ((project (esy/project--of-buffer (current-buffer))))
-    (if (esy/project--p project)
-	(progn
-	  (message "Activating esy-mode...")
-	  (if (esy/project--ready-p project)
-	      (message "Project ready for development")
-	    (if (y-or-n-p
-		 "Seems like a valid esy project. Go ahead and install and build all dependencies?")
-		(message "TODO: run esy") t)))
-      (message "Doesn't look like an esy project. esy-mode will stay dormant"))))
+  (progn
+    ;; TODO: Check if esy is available on the system
+    (make-local-variable 'compile-command) 
+    (setq compile-command "esy")
+    (let* ((project (esy/project--of-buffer (current-buffer))))
+      (if (esy/project--p project)
+	  (progn
+	    (message "Activating esy-mode...")
+	    (if (esy/project--ready-p project)
+		(message "Project ready for development")
+	      (if (y-or-n-p
+		   "Seems like a valid esy project. Go ahead and install and build all dependencies?")
+		  (compile "esy") t)))
+	(message "Doesn't look like an esy project. esy-mode will stay dormant")))))
 
 ;;;###autoload
 (add-hook 'reason-mode-hook 'esy-mode)

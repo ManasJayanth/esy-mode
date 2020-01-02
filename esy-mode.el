@@ -36,20 +36,23 @@
 (defun esy/project--of-path (project-path) 
   "of-path(path): returns an abstract structure that can later be used to
                  obtain more info about the project"
-  (let* ((json-str (shell-command-to-string (format "esy status -P %s"
-						    project-path))) 
+  (let* ((default-directory project-path)
+	 (json-str (shell-command-to-string "esy status")) 
+	 (json-array-type 'list) 
+	 (json-key-type 'string) 
 	 (json-false 'nil)
 	 (json-object-type 'hash-table)) 
-
+    (progn
     (condition-case nil 
 	(json-read-from-string json-str)
-      (error (make-hash-table))
-      )))
+      (error (progn
+	       (message "Error while json parsing")
+	       (make-hash-table)))))))
 
 (defun esy/project--of-file-path (file-path)
   "of-file-path(path): returns an abstract structure that can later be used
                        to obtain more info about the esy project"
-  (let* ((project-path (file-name-directory file-path))) (esy/project--of-path project-path)))
+  (let* ((project-path (file-name-directory file-path))) (progn (esy/project--of-path project-path))))
 
 (defun esy/project--of-buffer (buffer)
   "of-buffer(buffer): returns an abstract structure that can later be used 
@@ -69,8 +72,16 @@
 (define-minor-mode esy-mode () 
   "Minor mode for esy - the package manager for Reason/OCaml" 
   :lighter " esy"
-  (let* ((project (esy/project--of-path (file-name-directory buffer-file-name)
-  (message "esy-mode activated"))))))
+  (let* ((project (esy/project--of-buffer (current-buffer))))
+    (if (esy/project--p project)
+	(progn
+	  (message "Activating esy-mode...")
+	  (if (esy/project--ready-p project)
+	      (message "Project ready for development")
+	    (if (y-or-n-p
+		 "Seems like a valid esy project. Go ahead and install and build all dependencies?")
+		(message "TODO: run esy") t)))
+      (message "Doesn't look like an esy project. esy-mode will stay dormant"))))
 
 ;;;###autoload
 (add-hook 'reason-mode-hook 'esy-mode)

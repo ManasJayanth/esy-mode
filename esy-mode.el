@@ -47,13 +47,16 @@ be used to obtain more info about the project"
 	 (json-array-type 'list) 
 	 (json-key-type 'string) 
 	 (json-false 'nil)
-	 (json-object-type 'hash-table)) 
-    (progn
-    (condition-case nil 
-	(json-read-from-string json-str)
-      (error (progn
-	       (message "Error while json parsing")
-	       (make-hash-table)))))))
+	 (json-object-type 'hash-table)
+	 (esy-status-json
+	  (condition-case nil 
+	      (json-read-from-string json-str)
+	    (error (progn
+		     (message "Error while json parsing \
+'esy status'")
+		     (make-hash-table)))))) 
+    (list 'json esy-status-json
+	   'path project-path)))
 
 (defun esy/project--of-file-path (file-path)
   "of-file-path(path): returns an abstract structure that can
@@ -65,14 +68,29 @@ later be used to obtain more info about the esy project"
 later be used to obtain more info about the esy project"
   (let* ((file-name (buffer-file-name buffer))) (if file-name (esy/project--of-file-path file-name) nil)))
 
-(defun esy/project--ready-p (json)
+(defun esy/project--ready-p (project)
   "ready-p(project): returns if a given project is ready for
 development ie. if the tools can be looked in it's sandbox"
-  (gethash "isProjectReadyForDev" json))
+  (gethash "isProjectReadyForDev" (plist-get project 'json)))
 
-(defun esy/project--p (json) 
+(defun esy/project--p (project) 
   "ready-p(project): returns if a given project structure is a valid esy project"
-  (gethash "isProject" json))
+  (gethash "isProject" (plist-get project 'json)))
+
+(defun esy/command-env--of-project (project)
+  "Given a project, it returns an abstract structure
+command-env"
+  nil)
+
+(defun esy/command-env--to-process-environment (command-env)
+  "Given a command-env, it turns it into a list
+that can be assigned to 'process-environment"
+  nil)
+
+(defun esy/command-env--to-get-exec-path (command-env)
+  "Given a command-env, it turns it into a list that
+can be assigned to 'exec-path"
+  nil)
 
 (defun esy/setup--esy-get-available-tools (project)
   
@@ -85,13 +103,20 @@ it looks for
 3. merlin
 
 "
-  ;; TODO: Look up esy sandbox
-  (let ((tools '()))
+  (let ((command-env esy/command-env--of-project project)
+	(tools '()))
     (progn
+      (make-local-variable 'process-environment)
+      (setq process-environment
+	    (esy/command-env--to-process-environment
+	     command-env))
+      (make-local-variable 'exec-path)
+      (setq exec-path
+	    (esy/command-env--get-exec-path command-env))
       (plist-put tools 'build "esy")
-      (plist-put tools 'refmt "esy exec-command refmt")
-      (plist-put tools 'merlin "esy exec-command merlin")
-      (plist-put tools 'lsp "esy exec-command ocamllsp"))))
+      (plist-put tools 'refmt (executable-find "refmt"))
+      (plist-put tools 'merlin (executable-find "merlin"))
+      (plist-put tools 'lsp (executable-find "ocamllsp")))))
 
 (defun esy/setup--esy (project)
   "setup--esy(project): runs ops to ensure project is ready
@@ -153,13 +178,13 @@ package.json or not"
 
 (defun esy/project--get-manifest-file-path (project)
   "returns the path to manifest file"
-  (gethash "rootPackageConfigPath" project))
+  (gethash "rootPackageConfigPath" (plist-get project 'json)))
 
 (defun esy/manifest--contains-esy-field-p (manifest)
   "Checks if a manifest structure contains esy field"
   (if manifest (gethash "esy" manifest) nil))
 
-(defun esy/project--get-type (project)
+(defun esy/package-manager--of-project (project)
   "Detect the package manager of the project. Returns either
 'esy|'opam|'npm"
   (let* ((manifest-file-path
@@ -207,10 +232,10 @@ package.json or not"
 	    ;;install/solve deps
 
 	    (let ((config-plist
-		   (let ((project-type (esy/project--get-type)))
-	      (cond (((eq project-type 'opam) (esy/setup--opam))
-		     ((eq project-type 'esy) (esy/setup--esy))
-		     ((eq project-type 'npm) (esy/setup--npm)))))))
+		   (let ((project-type (esy/package-manager--of-project)))
+	      (cond (((eq project-type 'opam) (esy/setup--opam project))
+		     ((eq project-type 'esy) (esy/setup--esy project))
+		     ((eq project-type 'npm) (esy/setup--npm project)))))))
 	      (progn
 		(make-local-variable 'compile-command)
 		(setq compile-command

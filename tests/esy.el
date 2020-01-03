@@ -95,22 +95,22 @@
   (should (not (esy/manifest--json-p "/foo/foo.opam"))))
 
 (ert-deftest
-    test-esy/project--get-type-when-esy
+    test-esy/package-manager--of-project-when-esy
     ()
-  "project--get-type must return correct project type"
+  "package-manager--of-project must return correct project type"
   (ert/test-suite
    :setup (lambda (tmp-dir) (esy-test-utils/fixture--create tmp-dir))
    :body (lambda (test-project-path)
 	   (let ((test-project (esy/project--of-path test-project-path)))
 	   (should (eq
-		    (esy/project--get-type test-project)
+		    (esy/package-manager--of-project test-project)
 		    'esy))))
    :teardown (lambda (x) (delete-directory x t))))
 
 (ert-deftest
-    test-esy/project--get-type-when-opam
+    test-esy/package-manager--of-project-when-opam
     ()
-  "project--get-type must properly detect an opam project
+  "package-manager--of-project must properly detect an opam project
 with an opam file"
   (ert/test-suite
    :setup (lambda (tmp-dir)
@@ -119,21 +119,21 @@ with an opam file"
 	   (let ((test-project
 		  (esy/project--of-path test-project-path)))
 	   (should (eq
-		    (esy/project--get-type test-project)
+		    (esy/package-manager--of-project test-project)
 		    'opam))))
    :teardown (lambda (x) (delete-directory x t))))
 
 (ert-deftest
-    test-esy/project--get-type-when-npm
+    test-esy/package-manager--of-project-when-npm
     ()
-  "project--get-type must properly detect an npm project
+  "package-manager--of-project must properly detect an npm project
 with a package.json (but no esy field in it)"
   (ert/test-suite
    :setup (lambda (tmp-dir) (esy-test-utils/fixture--create-npm tmp-dir))
    :body (lambda (test-project-path)
 	   (let ((test-project (esy/project--of-path test-project-path)))
 	   (should (eq
-		    (esy/project--get-type test-project)
+		    (esy/package-manager--of-project test-project)
 		    'npm))))
    :teardown (lambda (x) (delete-directory x t))))
 

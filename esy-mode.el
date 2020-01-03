@@ -40,7 +40,7 @@
     (buffer-string)))
 
 (defun esy/project--of-path (project-path) 
-  "of-path(path): returns an abstract structure that can later
+  "Returns an abstract structure that can later
 be used to obtain more info about the project"
   (let* ((default-directory project-path)
 	 (json-str (shell-command-to-string "esy status")) 
@@ -58,34 +58,67 @@ be used to obtain more info about the project"
     (list 'json esy-status-json
 	   'path project-path)))
 
+(defun esy/project--get-path (project)
+  "Returns the root of the project"
+  (plist-get project 'path))
+
+(defun esy/project--get-manifest-file-path (project)
+  "Returns the path to manifest file"
+  (gethash "rootPackageConfigPath" (plist-get project 'json)))
+
 (defun esy/project--of-file-path (file-path)
-  "of-file-path(path): returns an abstract structure that can
+  "Returns an abstract structure that can
 later be used to obtain more info about the esy project"
   (let* ((project-path (file-name-directory file-path))) (progn (esy/project--of-path project-path))))
 
 (defun esy/project--of-buffer (buffer)
-  "of-buffer(buffer): returns an abstract structure that can 
+  "Returns an abstract structure that can 
 later be used to obtain more info about the esy project"
   (let* ((file-name (buffer-file-name buffer))) (if file-name (esy/project--of-file-path file-name) nil)))
 
 (defun esy/project--ready-p (project)
-  "ready-p(project): returns if a given project is ready for
+  "Returns if a given project is ready for
 development ie. if the tools can be looked in it's sandbox"
   (gethash "isProjectReadyForDev" (plist-get project 'json)))
 
 (defun esy/project--p (project) 
-  "ready-p(project): returns if a given project structure is a valid esy project"
+  "Returns if a given project structure is a valid esy project"
   (gethash "isProject" (plist-get project 'json)))
 
 (defun esy/command-env--of-project (project)
   "Given a project, it returns an abstract structure
 command-env"
-  nil)
+  (let*
+      ((project-path (esy/project--get-path project))
+       (default-directory project-path)
+       (json-str
+	(condition-case
+	    nil
+	    (shell-command-to-string
+	     "esy command-env --json")
+	  (error (progn
+		   (message
+		    "Error while running 'esy command-env --json'")
+		   "{}"))))
+	 (json-array-type 'list)
+	 (json-key-type 'string)
+	 (json-false 'nil)
+	 (json-object-type 'hash-table)
+	 (esy-command-env-json
+	  (json-read-from-string json-str)))
+    (list 'command-env esy-command-env-json)))
 
 (defun esy/command-env--to-process-environment (command-env)
   "Given a command-env, it turns it into a list
 that can be assigned to 'process-environment"
-  nil)
+  (let ((command-env-json
+	 (plist-get command-env 'command-env))
+	(penv '()))
+    (progn
+      (maphash (lambda (k v)
+		 (setq penv (cons (format "%s=%s" k v) penv)))
+	       command-env-json)
+      penv)))
 
 (defun esy/command-env--to-get-exec-path (command-env)
   "Given a command-env, it turns it into a list that
@@ -176,10 +209,6 @@ json or not"
 package.json or not"
   (if file-path (string-match "package\.json$" file-path) nil))
 
-(defun esy/project--get-manifest-file-path (project)
-  "returns the path to manifest file"
-  (gethash "rootPackageConfigPath" (plist-get project 'json)))
-
 (defun esy/manifest--contains-esy-field-p (manifest)
   "Checks if a manifest structure contains esy field"
   (if manifest (gethash "esy" manifest) nil))
@@ -232,10 +261,14 @@ package.json or not"
 	    ;;install/solve deps
 
 	    (let ((config-plist
-		   (let ((project-type (esy/package-manager--of-project)))
-	      (cond (((eq project-type 'opam) (esy/setup--opam project))
-		     ((eq project-type 'esy) (esy/setup--esy project))
-		     ((eq project-type 'npm) (esy/setup--npm project)))))))
+		   (let ((project-type
+			  (esy/package-manager--of-project)))
+		     (cond (((eq project-type 'opam)
+			     (esy/setup--opam project))
+			    ((eq project-type 'esy)
+			     (esy/setup--esy project))
+			    ((eq project-type 'npm)
+			     (esy/setup--npm project)))))))
 	      (progn
 		(make-local-variable 'compile-command)
 		(setq compile-command

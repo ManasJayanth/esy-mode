@@ -126,16 +126,56 @@ with an opam file"
 (ert-deftest
     test-esy/package-manager--of-project-when-npm
     ()
-  "package-manager--of-project must properly detect an npm project
-with a package.json (but no esy field in it)"
+  "package-manager--of-project must properly detect an npm 
+project with a package.json (but no esy field in it)"
   (ert/test-suite
-   :setup (lambda (tmp-dir) (esy-test-utils/fixture--create-npm tmp-dir))
-   :body (lambda (test-project-path)
-	   (let ((test-project (esy/project--of-path test-project-path)))
-	   (should (eq
-		    (esy/package-manager--of-project test-project)
-		    'npm))))
-   :teardown (lambda (x) (delete-directory x t))))
+   :setup (lambda
+	    (tmp-dir)
+	    (esy-test-utils/fixture--create-npm tmp-dir))
+   :body (lambda
+	   (test-project-path)
+	   (let ((test-project
+		  (esy/project--of-path test-project-path)))
+	     (should (eq
+		      (esy/package-manager--of-project
+		       test-project)
+		      'npm))))
+   :teardown (lambda
+	       (x)
+	       (delete-directory x t))))
+
+(ert-deftest
+    test-esy/command-env--utils
+    ()
+  "command-env-* fns"
+  (ert/test-suite
+   :setup (lambda
+	    (tmp-dir)
+	    (let* ((test-project-path
+		   (esy-test-utils/fixture--create tmp-dir))
+		  (default-directory test-project-path))
+	      (progn
+		(shell-command "esy")
+		default-directory)))
+   :body (lambda
+	   (test-project-path)
+	   (let* ((test-project
+		   (esy/project--of-path test-project-path))
+		  (command-env
+		   (esy/command-env--of-project test-project))
+		  (penv
+		   (esy/command-env--to-process-environment
+		    command-env)))
+	     (progn
+	       (should penv)
+	       (should (listp penv))
+	       (dolist (e penv)
+		 (progn
+		   (should (stringp e))
+		   (should (string-match "=" e)))))))
+   :teardown (lambda
+	       (x)
+	       (delete-directory x t))))
 
 (ert-deftest
     test-esy/project--get-manifest-file-path

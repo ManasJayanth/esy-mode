@@ -120,10 +120,29 @@ that can be assigned to 'process-environment"
 	       command-env-json)
       penv)))
 
-(defun esy/command-env--to-get-exec-path (command-env)
+(defun esy/command-env--get-exec-path (command-env)
   "Given a command-env, it turns it into a list that
 can be assigned to 'exec-path"
-  nil)
+  (let* ((penv
+	  (esy/command-env--to-process-environment
+	   command-env))
+	 (path-env-str-list (seq-filter
+			(lambda (s) (string-match "^path" s))
+			penv)))
+    (dolist (e path-env-str-list)
+      (let* ((parts (split-string e "="))
+	     (exec-path-list '()))
+	(progn
+	  (if (eq (length parts) 2)
+	      (progn
+		(let ((v (nth 1 parts)))
+		  (setq exec-path-list
+			(split-string
+			 v
+			 (if (string=
+			      system-type
+			      "windows-nt") ";" ":"))))))
+	  exec-path-list)))))
 
 (defun esy/setup--esy-get-available-tools (project)
   

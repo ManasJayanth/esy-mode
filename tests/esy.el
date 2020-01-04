@@ -172,7 +172,12 @@ project with a package.json (but no esy field in it)"
 	       (dolist (e penv)
 		 (progn
 		   (should (stringp e))
-		   (should (string-match "=" e)))))))
+		   (should (string-match "=" e))
+		   (let* ((exec-path-list
+			   (esy/command-env--get-exec-path
+			    command-env)))
+		     (progn
+		       (should (listp exec-path-list)))))))))
    :teardown (lambda
 	       (x)
 	       (delete-directory x t))))

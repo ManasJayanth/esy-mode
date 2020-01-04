@@ -29,7 +29,17 @@
   :link '(url-link :tag "github"
 		   "https://github.com/prometheansacrifice/esy-mode"))
 
-(defvar lsp-command-tuple nil)
+(setq lexical-binding t)
+
+(defvar esy-lsp-command "")
+(make-local-variable 'esy-lsp-command)
+(defvar esy-refmt-command nil)
+(make-local-variable 'esy-refmt-command)
+(defvar esy-merlin-command nil)
+(make-local-variable 'esy-merlin-command)
+(defvar esy-compile-command nil)
+(make-local-variable 'esy-compile-command)
+
 
 ;; Units
 (defun add-two (p) 
@@ -40,6 +50,16 @@
   (with-temp-buffer
     (insert-file-contents file-path)
     (buffer-string)))
+
+(defun esy/f--write (fname data)
+  "Write to file"
+  (with-temp-file fname (insert data)))
+
+(defun esy/internal--project--get-manifest-file-path
+    (esy-status-json)
+  "Given the json object of 'esy status' output,
+it returns the manifest file"
+  (gethash "rootPackageConfigPath" esy-status-json))
 
 (defun esy/project--of-path (project-path) 
   "Returns an abstract structure that can later
@@ -58,7 +78,10 @@ be used to obtain more info about the project"
 'esy status'")
 		     (make-hash-table)))))) 
     (list 'json esy-status-json
-	   'path project-path)))
+	  'path (let* ((manifest-path (esy/internal--project--get-manifest-file-path esy-status-json)))
+		  (if manifest-path
+		      (file-name-directory manifest-path)
+		    nil)))))
 
 (defun esy/project--get-path (project)
   "Returns the root of the project"
@@ -66,7 +89,8 @@ be used to obtain more info about the project"
 
 (defun esy/project--get-manifest-file-path (project)
   "Returns the path to manifest file"
-  (gethash "rootPackageConfigPath" (plist-get project 'json)))
+  (esy/internal--project--get-manifest-file-path
+   (plist-get project 'json)))
 
 (defun esy/project--of-file-path (file-path)
   "Returns an abstract structure that can
@@ -169,28 +193,30 @@ it looks for
 	    (esy/command-env--get-exec-path command-env))
       (setq tools (plist-put tools 'build "esy"))
       (setq tools (plist-put tools 'refmt (executable-find "refmt")))
-      (setq tools (plist-put tools 'merlin (executable-find "merlin")))
+      (setq tools (plist-put tools 'merlin (executable-find "ocamlmerlin")))
       (setq tools (plist-put tools 'lsp (executable-find "ocamllsp")))
       tools)))
 
-(defun esy/setup--esy (project)
+(defun esy/setup--esy (project callback)
   "setup--esy(project): runs ops to ensure project is ready
 for development"
   (if (esy/project--ready-p project)
       (progn
-	(message "Project ready for development"))
-    (if (y-or-n-p
-	 "Seems like a valid esy project. Go ahead and install and build all dependencies?")
-	(progn
+	(message "Project ready for development")
+	(funcall callback
+		 (esy/setup--esy-get-available-tools project)))
+    (progn
+	  (add-hook
+	   'compilation-finish-functions
+	   (lambda (buffer desc)
+	     (funcall callback (esy/setup--esy-get-available-tools project))))
 	  (compile "esy"))))
-  (esy/setup--esy-get-available-tools project))
 
-(defun esy/setup--opam (_)
+(defun esy/setup--opam (project callback)
   "setup--opam(_): currently doesn't do anything. opam-user-setup works well enough, IMO!"
-  ;; TODO: Look up opam switch
-  '(build "echo TODO: look into opam file" refmt "opam exec refmt" merlin "opam exec merlin" lsp "opam exec lsp"))
+  (esy/setup--esy project callback))
 
-(defun esy/setup--npm(project)
+(defun esy/setup--npm(project callback)
   
   "setup--npm(project): Although named 'npm', this function uses esy to setup the Reason/OCaml toolchain.
 
@@ -200,7 +226,21 @@ npm is incapable of
      Eg: merlin expected the correct ocamlmerlin-reason available on it's path. This can be tricky in non-sandboxed setup where a user could have almost any version of ocamlmerlin installed
 
 "
-  '())
+  (if (y-or-n-p "Seems like an npm/bsb project. It is recommended that you we drop and esy.json for you. Go ahead?")
+      (progn
+	(esy/f--write
+	 (concat
+	  (file-name-as-directory
+	   (esy/project--get-path project))
+	  "esy.json")
+	 "{
+ \"dependencies\": {
+    \"ocaml\": \"4.6.x\",
+    \"@esy-ocaml/reason\": \"*\",
+    \"@opam/ocaml-lsp-server\": \"ocaml/ocaml-lsp:ocaml-lsp-server.opam#e5e6ebf9dcf157\"
+  }
+}")
+	(esy/setup--esy project callback))))
 
 (defun esy/manifest--of-path (file-path)
   "Creates an abstract manifest structure given file path"
@@ -283,29 +323,39 @@ package.json or not"
 	    ;;install/solve deps
 
 	    (let ((config-plist
-		   (let ((project-type
-			  (esy/package-manager--of-project project)))
+		   (let* ((project-type
+			  (esy/package-manager--of-project
+			   project))
+			 (callback
+			  (lambda (config-plist)
+			    (progn
+			      (setq-local esy-compile-command
+					  (plist-get
+					   config-plist
+					   'build))
+			      (setq-local esy-refmt-command
+					  (plist-get
+					   config-plist
+					   'refmt))
+			      (setq-local esy-merlin-command
+					  (plist-get
+					   config-plist
+					   'merlin))
+			      (setq-local esy-lsp-command
+					  (plist-get
+					   config-plist
+					   'lsp))
+			      ))))
 		     (cond ((eq project-type 'opam)
-			     (esy/setup--opam project))
+			    (esy/setup--opam project
+					     callback))
 			    ((eq project-type 'esy)
-			     (esy/setup--esy project))
+			     (esy/setup--esy project
+					     callback))
 			    ((eq project-type 'npm)
-			     (esy/setup--npm project))))))
-	      (progn
-		(make-local-variable 'compile-command)
-		(setq compile-command
-		      (plist-get config-plist 'build))
-		(make-local-variable 'refmt-command)
-		(setq refmt-command
-		      (plist-get config-plist 'refmt))
-		(make-local-variable 'merlin-command)
-		(setq merlin-command
-		      (plist-get config-plist 'merlin))
-		(make-local-variable 'lsp-command-tuple)
-		(setq lsp-command-tuple
-		      (plist-get config-plist
-				 'lsp))
-	    )))
+			     (esy/setup--npm project
+					     callback))))))
+	      ))
 	(message "Doesn't look like an esy project. esy-mode will stay dormant")))))
 
 ;;;###autoload

@@ -29,6 +29,8 @@
   :link '(url-link :tag "github"
 		   "https://github.com/prometheansacrifice/esy-mode"))
 
+(defvar lsp-command-tuple nil)
+
 ;; Units
 (defun add-two (p) 
   (+ p 2))
@@ -126,23 +128,23 @@ can be assigned to 'exec-path"
   (let* ((penv
 	  (esy/command-env--to-process-environment
 	   command-env))
+	 (exec-path-list '())
 	 (path-env-str-list (seq-filter
 			(lambda (s) (string-match "^path" s))
 			penv)))
-    (dolist (e path-env-str-list)
-      (let* ((parts (split-string e "="))
-	     (exec-path-list '()))
-	(progn
-	  (if (eq (length parts) 2)
-	      (progn
-		(let ((v (nth 1 parts)))
+    (progn
+      (dolist (e path-env-str-list)
+	(let* ((parts (split-string e "=")))
+	  (progn
+	    (if (eq (length parts) 2)
+		(progn
 		  (setq exec-path-list
 			(split-string
-			 v
+			 (nth 1 parts)
 			 (if (string=
 			      system-type
-			      "windows-nt") ";" ":"))))))
-	  exec-path-list)))))
+			      "windows-nt") ";" ":"))))))))
+      exec-path-list)))
 
 (defun esy/setup--esy-get-available-tools (project)
   
@@ -155,7 +157,7 @@ it looks for
 3. merlin
 
 "
-  (let ((command-env esy/command-env--of-project project)
+  (let* ((command-env (esy/command-env--of-project project))
 	(tools '()))
     (progn
       (make-local-variable 'process-environment)
@@ -165,10 +167,11 @@ it looks for
       (make-local-variable 'exec-path)
       (setq exec-path
 	    (esy/command-env--get-exec-path command-env))
-      (plist-put tools 'build "esy")
-      (plist-put tools 'refmt (executable-find "refmt"))
-      (plist-put tools 'merlin (executable-find "merlin"))
-      (plist-put tools 'lsp (executable-find "ocamllsp")))))
+      (setq tools (plist-put tools 'build "esy"))
+      (setq tools (plist-put tools 'refmt (executable-find "refmt")))
+      (setq tools (plist-put tools 'merlin (executable-find "merlin")))
+      (setq tools (plist-put tools 'lsp (executable-find "ocamllsp")))
+      tools)))
 
 (defun esy/setup--esy (project)
   "setup--esy(project): runs ops to ensure project is ready
@@ -281,27 +284,27 @@ package.json or not"
 
 	    (let ((config-plist
 		   (let ((project-type
-			  (esy/package-manager--of-project)))
-		     (cond (((eq project-type 'opam)
+			  (esy/package-manager--of-project project)))
+		     (cond ((eq project-type 'opam)
 			     (esy/setup--opam project))
 			    ((eq project-type 'esy)
 			     (esy/setup--esy project))
 			    ((eq project-type 'npm)
-			     (esy/setup--npm project)))))))
+			     (esy/setup--npm project))))))
 	      (progn
 		(make-local-variable 'compile-command)
 		(setq compile-command
-		      (plist-get config-plist :build))
+		      (plist-get config-plist 'build))
 		(make-local-variable 'refmt-command)
 		(setq refmt-command
-		      (plist-get config-plist :refmt))
+		      (plist-get config-plist 'refmt))
 		(make-local-variable 'merlin-command)
 		(setq merlin-command
-		      (plist-get config-plist :merlin))
+		      (plist-get config-plist 'merlin))
 		(make-local-variable 'lsp-command-tuple)
-		(setq 'lsp-command-tuple
+		(setq lsp-command-tuple
 		      (plist-get config-plist
-				 :lsp))
+				 'lsp))
 	    )))
 	(message "Doesn't look like an esy project. esy-mode will stay dormant")))))
 

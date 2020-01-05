@@ -214,7 +214,7 @@ for development"
 
 (defun esy/setup--opam (project callback)
   "setup--opam(_): currently doesn't do anything. opam-user-setup works well enough, IMO!"
-  (esy/setup--esy project callback))
+  (message "Detected an opam project. Staying dormant"))
 
 (defun esy/setup--npm(project callback)
   

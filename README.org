@@ -108,7 +108,17 @@
    development environment. Here on, running =(executable-find ...)=
    returns the dev tools from the =esy= sandbox, ensuring you and your
    co-worker always have the same exact version of tools while
-   developing
+   developing.
+
+   
+**** Why load the environment when one can simply `esy exec-command`?
+
+     =esy exec-command <tool-command> = is a great approach. For better
+     editor experience, one might have to resort to =esy exec-command
+     command -v <tool-command> = repeatedly to check if the tool
+     exists and inform the user. =(executable-find ...)= is better
+     approach IMO. This is subject to how Emacs handles buffer local
+     process environments of course.
 
    
 *** NPM and Bucklescript build system managed projects

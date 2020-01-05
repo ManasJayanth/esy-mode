@@ -8,7 +8,10 @@
   language server. It, however, doesn't ship the tools
   themselves. =esy-mode= simply creates a buffer local environment for
   the tools - which enables it to efficiently inform the user of
-  available/missing tools.
+  available/missing tools. 
+
+  If you are looking for a tool to have a great first working state,
+  checkout [[https://github.com/esy/pesy][pesy]]. Or simply clone the [[https://github.com/esy-ocaml/hello-reason][hello-reason]] repo. 
 
 ** Pre-requisites
 

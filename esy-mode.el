@@ -358,10 +358,5 @@ package.json or not"
 	      ))
 	(message "Doesn't look like an esy project. esy-mode will stay dormant")))))
 
-;;;###autoload
-(add-hook 'reason-mode-hook 'esy-mode)
-(add-hook 'reason-mode-hook 'tuareg-mode)
-(add-hook 'reason-mode-hook 'caml-mode)
-
 (provide 'esy-mode)
 ;;; esy.el ends here

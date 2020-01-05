@@ -1,12 +1,168 @@
-* Minor mode for Esy - the package manager for Reason/OCaml (WIP)
+* esy-mode
 
   =esy-mode= is a minor mode written for [[http://esy.sh][esy]] - the package manager for
   Reason/OCaml development. It is meant to serve as a auxiliary plugin
   that helps other plugins to find the correct path to the tools.
 
   For instance, it can help lsp-mode get the right path to ocaml
-  language server.
+  language server. It, however, doesn't ship the tools
+  themselves. =esy-mode= simply creates a buffer local environment for
+  the tools - which enables it to efficiently inform the user of
+  available/missing tools. 
+
+  If you are looking for a tool to have a great first working state,
+  checkout [[https://github.com/esy/pesy][pesy]]. Or simply clone the [[https://github.com/esy-ocaml/hello-reason][hello-reason]] repo. 
+
+** Pre-requisites
+
+   This minor mode is meant to work with =esy= which is not shipped
+   here. Quickest way to get =esy= installed on your machine is to
+   install it globally using a nodejs package manager
+   
+   #+BEGIN_SRC shell
+     npm i -g esy
+     # or
+     yarn global add esy
+   #+END_SRC
+
+   No, =esy= is not written in JS, but a prebuilt binary and is
+   currently only containing ones that work on 64 bit Windows, Linux
+   and MacOS. More details on the [[http://esy.sh][website]]
 
 ** Installation
 
-   Not ready for public consumption
+   At the moment the package hasn't been published anywhere. Quickest
+   way to  get started is to clone the repo and load it
+
+   #+BEGIN_SRC shell
+     git clone https://github.com/prometheansacrifice/esy-mode
+   #+END_SRC
+
+   #+BEGIN_SRC emacs-lisp
+     (load-file "/path/to/esy-mode/esy-mode.el")
+   #+END_SRC  
+
+   If you use quelpa and use package, you can use the following
+
+   #+BEGIN_SRC emacs-lisp
+     (use-package
+       esy-mode
+       :quelpa (esy-mode :path "/path/to/esy-mode.el" :fetcher file)
+       :hook reason-mode
+       :config (progn
+		 (lsp-register-client
+		  (make-lsp-client
+		   :new-connection (lsp-stdio-connection '("ocamllsp"))
+		   :major-modes '(reason-mode tuareg-mode)
+		   :server-id 'esy-ocamlmerlin-lsp))))
+   #+END_SRC
+
+** How it works 
+
+   All =npm= and =opam= managed Reason/OCaml projects are valid esy projects too.
+   This means, the minor mode must correctly distinguish them from actual =esy= projects
+   (which are basically Reason/OCaml source with build config files
+   shipped with an =esy.json= or a =package.json=).
+
+   =esy= provides a =status= sub-command. Which can return an output
+   like this in the case of an esy project
+
+   #+BEGIN_SRC js
+     {
+       "isProject": true,
+       "isProjectSolved": true,
+       "isProjectFetched": true,
+       "isProjectReadyForDev": true,
+       "rootBuildPath": "/path/to/g/foo/_esy/default/store/b/foo-03e8a06e",
+       "rootInstallPath": "/path/to/g/foo/_esy/default/store/i/foo-03e8a06e",
+       "rootPackageConfigPath": "/path/to/g/foo/esy.json"
+     }
+   #+END_SRC
+
+   For an opam project, it could look like
+
+   #+BEGIN_SRC js
+     {
+       "isProject": true,
+       "isProjectSolved": true,
+       "isProjectFetched": true,
+       "isProjectReadyForDev": true,
+       "rootBuildPath": "/path/to/ocaml/ocaml-lsp/_esy/default/store/b/ocaml_lsp-38a74123",
+       "rootInstallPath": "/path/to/ocaml/ocaml-lsp/_esy/default/store/i/ocaml_lsp-38a74123",
+       "rootPackageConfigPath": null
+     }
+   #+END_SRC
+
+   So,
+
+   1. All non-json manifest file driven projects, by looking up
+      =rootPackageConfigPath= property, are opam projects
+   2. Among json file driven projects,
+      
+      1. Those with that are not package.json are esy projects
+      2. =package.json= with =esy= property are =esy= projects -
+         others were being managed by npm
+   
+   Valid =esy= projects are straight forward to handle - the minor mode
+   checks if the project is in buildable state and prompts if it
+   isn't.
+
+   =esy= provides the [[https://esy.sh/docs/en/environment.html][command environment]] (the environment where tools
+   like editors are supposed to run) as a json output. =esy-mode= loads
+   all complete environment in a buffer local
+   =process-environment=, giving each project workspace an identical
+   development environment. Here on, running =(executable-find ...)=
+   returns the dev tools from the =esy= sandbox, ensuring you and your
+   co-worker always have the same exact version of tools while
+   developing.
+
+   
+**** Why load the environment when one can simply `esy exec-command`?
+
+     =esy exec-command <tool-command>= is a great approach. For good
+     editor experience, one might have to resort to =esy exec-command
+     command -v <tool-command>= repeatedly to check if the tool
+     exists and inform the user. =(executable-find ...)= is better
+     approach IMO. This is subject to how Emacs handles buffer local
+     process environments of course.
+
+   
+*** NPM and Bucklescript build system managed projects
+
+    =npm= unfortunately doesn't provide prebuilts with reproducibility
+    guarantees, nor does it sandbox tools that need each other on the
+    path to work together. Mismatching compiler and [[https://github.com/ocaml/merlin][merlin]] prebuilts
+    cause a lot of confusion - using npm to install these tools
+    globally is not an easy experience for newcomers.
+
+    Similarly, inter-tool interaction is not reliable in
+    global environments. For instance, =ocamlmerlin= expects
+    =ocamlmerlin-reason= binary to be available in it's path - and
+    both of these must be built with the *same* version of the
+    compiler. In the global environment, it was incredibly hard to get
+    them to work - user's system wide configuration is a complete
+    blackbox. The only reliable way to ensure interacting tools work
+    together is to run them in sandboxed environments - and =esy=
+    provides just that!
+
+    This is why we recommend bucklescript users to allow editor
+    plugins to drop an =esy.json= - plugins look into the compiler
+    version and create this file themselves.
+
+*** Opam managed projects
+
+    This is a work in progress - =esy= provides sandboxed environments
+    for opam projects too (without creating any =esy.json=). But opam
+    users dont ship development time dependencies in their package
+    manifests. For now, the plugin stays inactive. Ideas are welcome.
+
+** Contributing guidelines
+
+   Currently beta quality. Looking forward to ideas and feedback. If
+   you're raising a PR, please add a test. Not having types to catch
+   your errors are hard - even if lisp somehow makes it bearable,
+   let's ensure we still try to catch errors early!
+    
+** License
+
+   MIT licensed. Please see LICENSE for more details

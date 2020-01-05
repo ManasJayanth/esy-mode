@@ -103,14 +103,14 @@
       2. =package.json= with =esy= property are =esy= projects -
          others were being managed by npm
    
-   Valid =esy= projects are straight forward to handle - the minor
+   Valid =esy= projects are straight forward to handle - the minor mode
    checks if the project is in buildable state and prompts if it
    isn't.
 
    =esy= provides the [[https://esy.sh/docs/en/environment.html][command environment]] (the environment where tools
-   like editors are supposed to run) as a json output. =esy-mode= load
-   all the complete environment in a buffer local
-   =process-environment= giving each project workspace the identical
+   like editors are supposed to run) as a json output. =esy-mode= loads
+   all complete environment in a buffer local
+   =process-environment=, giving each project workspace an identical
    development environment. Here on, running =(executable-find ...)=
    returns the dev tools from the =esy= sandbox, ensuring you and your
    co-worker always have the same exact version of tools while
@@ -119,9 +119,9 @@
    
 **** Why load the environment when one can simply `esy exec-command`?
 
-     =esy exec-command <tool-command> = is a great approach. For better
+     =esy exec-command <tool-command>= is a great approach. For good
      editor experience, one might have to resort to =esy exec-command
-     command -v <tool-command> = repeatedly to check if the tool
+     command -v <tool-command>= repeatedly to check if the tool
      exists and inform the user. =(executable-find ...)= is better
      approach IMO. This is subject to how Emacs handles buffer local
      process environments of course.
@@ -129,20 +129,20 @@
    
 *** NPM and Bucklescript build system managed projects
 
-    =npm= unfortunately doesn't handle prebuilts with reproducibility
+    =npm= unfortunately doesn't provide prebuilts with reproducibility
     guarantees, nor does it sandbox tools that need each other on the
     path to work together. Mismatching compiler and [[https://github.com/ocaml/merlin][merlin]] prebuilts
     cause a lot of confusion - using npm to install these tools
     globally is not an easy experience for newcomers.
 
-    On the other hand, inter-tool interaction is not reliable in
+    Similarly, inter-tool interaction is not reliable in
     global environments. For instance, =ocamlmerlin= expects
     =ocamlmerlin-reason= binary to be available in it's path - and
     both of these must be built with the *same* version of the
     compiler. In the global environment, it was incredibly hard to get
     them to work - user's system wide configuration is a complete
     blackbox. The only reliable way to ensure interacting tools work
-    together is to run them in sandboxed environments - and esy
+    together is to run them in sandboxed environments - and =esy=
     provides just that!
 
     This is why we recommend bucklescript users to allow editor
@@ -154,7 +154,7 @@
     This is a work in progress - =esy= provides sandboxed environments
     for opam projects too (without creating any =esy.json=). But opam
     users dont ship development time dependencies in their package
-    manifests. For now the plugin stays inactive. Ideas are welcome.
+    manifests. For now, the plugin stays inactive. Ideas are welcome.
 
 ** Contributing guidelines
 

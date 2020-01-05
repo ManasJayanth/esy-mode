@@ -154,8 +154,7 @@
     This is a work in progress - =esy= provides sandboxed environments
     for opam projects too (without creating any =esy.json=). But opam
     users dont ship development time dependencies in their package
-    manifests. It's best for the plugin to fallback to opam installed
-    tools for now (TODO)
+    manifests. For now the plugin stays inactive. Ideas are welcome.
 
 ** Contributing guidelines
 
@@ -164,7 +163,6 @@
    your errors are hard - even if lisp somehow makes it bearable,
    let's ensure we still try to catch errors early!
     
-
 ** License
 
    MIT licensed. Please see LICENSE for more details

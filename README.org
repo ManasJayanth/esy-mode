@@ -5,7 +5,10 @@
   that helps other plugins to find the correct path to the tools.
 
   For instance, it can help lsp-mode get the right path to ocaml
-  language server.
+  language server. It, however, doesn't ship the tools
+  themselves. =esy-mode= simply creates a buffer local environment for
+  the tools - which enables it to efficiently inform the user of
+  available/missing tools.
 
 ** Pre-requisites
 

@@ -360,6 +360,8 @@ package.json or not"
 
 ;;;###autoload
 (add-hook 'reason-mode-hook 'esy-mode)
+(add-hook 'reason-mode-hook 'tuareg-mode)
+(add-hook 'reason-mode-hook 'caml-mode)
 
 (provide 'esy-mode)
 ;;; esy.el ends here

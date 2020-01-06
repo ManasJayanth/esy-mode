@@ -95,7 +95,13 @@ be used to obtain more info about the project"
 (defun esy/project--of-file-path (file-path)
   "Returns an abstract structure that can
 later be used to obtain more info about the esy project"
-  (let* ((project-path (file-name-directory file-path))) (progn (esy/project--of-path project-path))))
+  (let* ((parent-path (file-name-directory file-path)))
+    (progn
+      (when (not
+	     (file-directory-p parent-path))
+	(make-directory parent-path t)
+	(message (format "esy-mode just created %s for you. If this is annoying, please raise a ticket." parent-path))
+      (esy/project--of-path parent-path)))))
 
 (defun esy/project--of-buffer (buffer)
   "Returns an abstract structure that can 

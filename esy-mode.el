@@ -99,7 +99,7 @@ later be used to obtain more info about the esy project"
     (progn
       (when (not
 	     (file-directory-p parent-path))
-	(make-directory parent-path)
+	(make-directory parent-path t)
 	(message (format "esy-mode just created %s for you. If this is annoying, please raise a ticket." parent-path))
       (esy/project--of-path parent-path)))))
 

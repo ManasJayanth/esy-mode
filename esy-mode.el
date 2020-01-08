@@ -115,7 +115,8 @@ development ie. if the tools can be looked in it's sandbox"
 
 (defun esy/project--p (project) 
   "Returns if a given project structure is a valid esy project"
-  (gethash "isProject" (plist-get project 'json)))
+  (let ((esy-status-json (plist-get project 'json)))
+    (when esy-status-json (gethash "isProject" esy-status-json))))
 
 (defun esy/command-env--of-project (project)
   "Given a project, it returns an abstract structure

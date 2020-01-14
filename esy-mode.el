@@ -29,18 +29,6 @@
   :link '(url-link :tag "github"
 		   "https://github.com/prometheansacrifice/esy-mode"))
 
-(setq lexical-binding t)
-
-(defvar esy-lsp-command "")
-(make-local-variable 'esy-lsp-command)
-(defvar esy-refmt-command nil)
-(make-local-variable 'esy-refmt-command)
-(defvar esy-merlin-command nil)
-(make-local-variable 'esy-merlin-command)
-(defvar esy-compile-command nil)
-(make-local-variable 'esy-compile-command)
-
-
 ;; Units
 (defun add-two (p) 
   (+ p 2))
@@ -213,11 +201,13 @@ for development"
 	(funcall callback
 		 (esy/setup--esy-get-available-tools project)))
     (progn
-	  (add-hook
-	   'compilation-finish-functions
-	   (lambda (buffer desc)
-	     (funcall callback (esy/setup--esy-get-available-tools project))))
-	  (compile "esy"))))
+      (setq lexical-binding t)
+      (make-local-variable 'compilation-finish-functions)
+      (add-hook
+       'compilation-finish-functions
+       (lambda (buffer desc)
+	 (funcall callback (esy/setup--esy-get-available-tools project))))
+      (compile "esy"))))
 
 (defun esy/setup--opam (project callback)
   "setup--opam(_): currently doesn't do anything. opam-user-setup works well enough, IMO!"
@@ -335,24 +325,7 @@ package.json or not"
 			   project))
 			 (callback
 			  (lambda (config-plist)
-			    (progn
-			      (setq-local esy-compile-command
-					  (plist-get
-					   config-plist
-					   'build))
-			      (setq-local esy-refmt-command
-					  (plist-get
-					   config-plist
-					   'refmt))
-			      (setq-local esy-merlin-command
-					  (plist-get
-					   config-plist
-					   'merlin))
-			      (setq-local esy-lsp-command
-					  (plist-get
-					   config-plist
-					   'lsp))
-			      ))))
+			    nil)))
 		     (cond ((eq project-type 'opam)
 			    (esy/setup--opam project
 					     callback))

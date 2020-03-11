@@ -200,14 +200,15 @@ for development"
 	(message "Project ready for development")
 	(funcall callback
 		 (esy/setup--esy-get-available-tools project)))
-    (progn
-      (setq lexical-binding t)
-      (make-local-variable 'compilation-finish-functions)
-      (add-hook
-       'compilation-finish-functions
-       (lambda (buffer desc)
-	 (funcall callback (esy/setup--esy-get-available-tools project))))
-      (compile "esy"))))
+    ;; (progn
+    ;;   (setq lexical-binding t)
+    ;;   (make-local-variable 'compilation-finish-functions)
+    ;;   (add-hook
+    ;;    'compilation-finish-functions
+    ;;    (lambda (buffer desc)
+    ;; 	 (funcall callback (esy/setup--esy-get-available-tools project))))
+    ;;   (compile "esy"))
+    nil))
 
 (defun esy/setup--opam (project callback)
   "setup--opam(_): currently doesn't do anything. opam-user-setup works well enough, IMO!"
@@ -223,21 +224,23 @@ npm is incapable of
      Eg: merlin expected the correct ocamlmerlin-reason available on it's path. This can be tricky in non-sandboxed setup where a user could have almost any version of ocamlmerlin installed
 
 "
-  (if (y-or-n-p "Seems like an npm/bsb project. It is recommended that you we drop and esy.json for you. Go ahead?")
-      (progn
-	(esy/f--write
-	 (concat
-	  (file-name-as-directory
-	   (esy/project--get-path project))
-	  "esy.json")
-	 "{
- \"dependencies\": {
-    \"ocaml\": \"4.6.x\",
-    \"@esy-ocaml/reason\": \"*\",
-    \"@opam/ocaml-lsp-server\": \"ocaml/ocaml-lsp:ocaml-lsp-server.opam#e5e6ebf9dcf157\"
-  }
-}")
-	(esy/setup--esy project callback))))
+;;   (if (y-or-n-p "Seems like an npm/bsb project. It is recommended that you we drop and esy.json for you. Go ahead?")
+;;       (progn
+;; 	(esy/f--write
+;; 	 (concat
+;; 	  (file-name-as-directory
+;; 	   (esy/project--get-path project))
+;; 	  "esy.json")
+;; 	 "{
+;;  \"dependencies\": {
+;;     \"ocaml\": \"4.6.x\",
+;;     \"@esy-ocaml/reason\": \"*\",
+;;     \"@opam/ocaml-lsp-server\": \"ocaml/ocaml-lsp:ocaml-lsp-server.opam#e5e6ebf9dcf157\"
+;;   }
+;; }")
+  ;; 	(esy/setup--esy project callback)))
+
+  nil)
 
 (defun esy/manifest--of-path (file-path)
   "Creates an abstract manifest structure given file path"
@@ -325,6 +328,7 @@ package.json or not"
 			   project))
 			 (callback
 			  (lambda (config-plist)
+			    (setq merlin-command (executable-find "ocamlmerlin"))
 			    nil)))
 		     (cond ((eq project-type 'opam)
 			    (esy/setup--opam project

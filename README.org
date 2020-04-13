@@ -29,6 +29,13 @@
    currently only containing ones that work on 64 bit Windows, Linux
    and MacOS. More details on the [[http://esy.sh][website]]
 
+   You'll need to tweak =reason-mode= a bit so that the project setup is completely
+   =esy-mode's= hands.
+
+   Example: [[https://github.com/prometheansacrifice/reason-mode/commit/e98f88a24491578461be85b2adf0dc5e354937cb][e98f88a244]]
+
+   TODO: make the tweaks less intrusive. Ping me on Discord if you need help with it.
+
 ** Installation
 
    At the moment the package hasn't been published anywhere. Quickest

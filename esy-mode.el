@@ -149,21 +149,14 @@ can be assigned to 'exec-path"
 	   command-env))
 	 (exec-path-list '())
 	 (path-env-str-list (seq-filter
-			(lambda (s) (string-match "^path" s))
+			(lambda (s) (string-match "^path$" s))
 			penv)))
-    (progn
-      (dolist (e path-env-str-list)
-	(let* ((parts (split-string e "=")))
-	  (progn
-	    (if (eq (length parts) 2)
-		(progn
-		  (setq exec-path-list
+    (setq exec-path-list
 			(split-string
-			 (nth 1 parts)
+			 (gethash "PATH" (nth 1 command-env))
 			 (if (string=
 			      system-type
-			      "windows-nt") ";" ":"))))))))
-      exec-path-list)))
+			      "windows-nt") ";" ":")))))
 
 (defun esy/setup--esy-get-available-tools (project)
   

@@ -1,4 +1,4 @@
-;;; esy.el --- Minor mode for assist esy, the package manager.
+;;; esy.el --- Minor mode for esy, the package manager.
 
 ;; Copyright (C) 2010-2019 Manas Jayanth
 

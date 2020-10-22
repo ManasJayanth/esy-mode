@@ -29,9 +29,8 @@
   :link '(url-link :tag "github"
 		   "https://github.com/prometheansacrifice/esy-mode"))
 
-;; Units
-(defun add-two (p) 
-  (+ p 2))
+(defvar esy-command "esy"
+  "The 'esy' command. Can be full path to the esy binary.")
 
 (defun esy/f--read (file-path)
   "Return file content."
@@ -53,7 +52,7 @@ it returns the manifest file"
   "Returns an abstract structure that can later
 be used to obtain more info about the project"
   (let* ((default-directory project-path)
-	 (json-str (shell-command-to-string "esy status")) 
+	 (json-str (shell-command-to-string (concat esy-command " status"))) 
 	 (json-array-type 'list) 
 	 (json-key-type 'string) 
 	 (json-false 'nil)
@@ -172,11 +171,9 @@ it looks for
   (let* ((command-env (esy/command-env--of-project project))
 	(tools '()))
     (progn
-      (make-local-variable 'process-environment)
       (setq process-environment
 	    (esy/command-env--to-process-environment
 	     command-env))
-      (make-local-variable 'exec-path)
       (setq exec-path
 	    (esy/command-env--get-exec-path command-env))
       (setq tools (plist-put tools 'build "esy"))
@@ -296,12 +293,23 @@ package.json or not"
 	   'opam)))
 
 
+(defun esy-mode-init ()
+  "Initialises esy-mode with necessary config. Relies on global vars like esy-command esy-mode-callback"
+ (make-local-variable 'process-environment)
+ (make-local-variable 'exec-path)
+ (if (file-exists-p esy-command)
+     (let ((esy-bin-dir (file-name-directory esy-command)))
+       (add-to-list 'exec-path esy-bin-dir)
+       (setenv "PATH" (concat (getenv "PATH") (concat path-separator esy-bin-dir)))
+ ))
+ (not (not (executable-find "esy"))))
+
 ;;;###autoload
 (define-minor-mode esy-mode () 
   "Minor mode for esy - the package manager for Reason/OCaml" 
   :lighter " esy"
   (progn
-    ;; TODO: Check if esy is available on the system
+    (if (esy-mode-init)
     (let* ((project (esy/project--of-buffer (current-buffer))))
       (if (esy/project--p project)
 	  (progn
@@ -333,7 +341,8 @@ package.json or not"
 			     (esy/setup--npm project
 					     callback))))))
 	      ))
-	(message "Doesn't look like an esy project. esy-mode will stay dormant")))))
+	(message "Doesn't look like an esy project. esy-mode will stay dormant")))
+     (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh"))))
 
 (provide 'esy-mode)
 ;;; esy.el ends here

@@ -1,6 +1,6 @@
 ;;; esy.el --- Minor mode for esy, the package manager.
 
-;; Copyright (C) 2010-2019 Manas Jayanth
+;; Copyright (C) 2020 Manas Jayanth
 
 ;; Author: Manas Jayanth <prometheansacrifice@gmail.com>
 ;; Created: 1 Jan 2020

@@ -32,6 +32,9 @@
 (defvar esy-command "esy"
   "The 'esy' command. Can be full path to the esy binary.")
 
+(defvar esy-mode-callback (lambda ())
+  "The callback that can be run once an esy project is initialised. Common use case is to enable ask lsp client to connect to the server (since this can only be done after the esy project is ready)")
+
 (defun esy/f--read (file-path)
   "Return file content."
   (with-temp-buffer
@@ -330,7 +333,7 @@ package.json or not"
 			 (callback
 			  (lambda (config-plist)
 			    (setq merlin-command (executable-find "ocamlmerlin"))
-			    nil)))
+			    (funcall esy-mode-callback))))
 		     (cond ((eq project-type 'opam)
 			    (esy/setup--opam project
 					     callback))

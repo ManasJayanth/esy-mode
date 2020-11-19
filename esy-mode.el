@@ -22,10 +22,10 @@
 (require 'json)
 
 ;; Customization
-(defgroup esy nil 
-  "Manage esy configuration" 
-  :group 'tools 
-  :group 'convenience 
+(defgroup esy nil
+  "Manage esy configuration"
+  :group 'tools
+  :group 'convenience
   :link '(url-link :tag "github"
 		   "https://github.com/prometheansacrifice/esy-mode"))
 
@@ -51,22 +51,22 @@
 it returns the manifest file"
   (gethash "rootPackageConfigPath" esy-status-json))
 
-(defun esy/project--of-path (project-path) 
+(defun esy/project--of-path (project-path)
   "Returns an abstract structure that can later
 be used to obtain more info about the project"
   (let* ((default-directory project-path)
-	 (json-str (shell-command-to-string (concat esy-command " status"))) 
-	 (json-array-type 'list) 
-	 (json-key-type 'string) 
+	 (json-str (shell-command-to-string (concat esy-command " status")))
+	 (json-array-type 'list)
+	 (json-key-type 'string)
 	 (json-false 'nil)
 	 (json-object-type 'hash-table)
 	 (esy-status-json
-	  (condition-case nil 
+	  (condition-case nil
 	      (json-read-from-string json-str)
 	    (error (progn
 		     (message "Error while json parsing \
 'esy status'")
-		     (make-hash-table)))))) 
+		     (make-hash-table))))))
     (list 'json esy-status-json
 	  'path (let* ((manifest-path (esy/internal--project--get-manifest-file-path esy-status-json)))
 		  (if manifest-path
@@ -94,7 +94,7 @@ later be used to obtain more info about the esy project"
       (esy/project--of-path parent-path))))
 
 (defun esy/project--of-buffer (buffer)
-  "Returns an abstract structure that can 
+  "Returns an abstract structure that can
 later be used to obtain more info about the esy project"
   (let* ((file-name (buffer-file-name buffer))) (if file-name (esy/project--of-file-path file-name) nil)))
 
@@ -103,7 +103,7 @@ later be used to obtain more info about the esy project"
 development ie. if the tools can be looked in it's sandbox"
   (gethash "isProjectReadyForDev" (plist-get project 'json)))
 
-(defun esy/project--p (project) 
+(defun esy/project--p (project)
   "Returns if a given project structure is a valid esy project"
   (let ((esy-status-json (plist-get project 'json)))
     (when esy-status-json (gethash "isProject" esy-status-json))))
@@ -161,10 +161,10 @@ can be assigned to 'exec-path"
 			      "windows-nt") ";" ":")))))
 
 (defun esy/setup--esy-get-available-tools (project)
-  
-  "setup--esy-return-missing-tools(project): looks into the 
+
+  "setup--esy-return-missing-tools(project): looks into the
 esy sandbox and returns a plist of missing tools. Specifically,
-it looks for 
+it looks for
 
 1. refmt/ocamlfmt
 2. lsp
@@ -208,12 +208,12 @@ for development"
   (message "Detected an opam project. Staying dormant"))
 
 (defun esy/setup--npm(project callback)
-  
+
   "setup--npm(project): Although named 'npm', this function uses esy to setup the Reason/OCaml toolchain.
 
 npm is incapable of
   a) handling prebuilts correctly
-  b) Correctly setup environment for tools that assume they are the only ones running. 
+  b) Correctly setup environment for tools that assume they are the only ones running.
      Eg: merlin expected the correct ocamlmerlin-reason available on it's path. This can be tricky in non-sandboxed setup where a user could have almost any version of ocamlmerlin installed
 
 "
@@ -238,13 +238,13 @@ npm is incapable of
 (defun esy/manifest--of-path (file-path)
   "Creates an abstract manifest structure given file path"
   (if (esy/manifest--json-p file-path)
-      (let ((json-str (esy/f--read file-path)) 
-	 (json-array-type 'list) 
-	 (json-key-type 'string) 
+      (let ((json-str (esy/f--read file-path))
+	 (json-array-type 'list)
+	 (json-key-type 'string)
 	 (json-false 'nil)
-	 (json-object-type 'hash-table)) 
+	 (json-object-type 'hash-table))
     (progn
-    (condition-case nil 
+    (condition-case nil
 	(json-read-from-string json-str)
       (error (progn
 	       (message "Error while json parsing")
@@ -254,13 +254,13 @@ npm is incapable of
       nil))))
 
 (defun esy/manifest--json-p (file-path)
-  "Takes a file path and returns if file at said path is 
+  "Takes a file path and returns if file at said path is
 json or not"
   ;; Cheat!
   (if file-path (string-match "\.json$" file-path) nil))
 
 (defun esy/manifest--package-json-p (file-path)
-  "Takes a file path and returns if file at said path is 
+  "Takes a file path and returns if file at said path is
 package.json or not"
   (if file-path (string-match "package\.json$" file-path) nil))
 
@@ -308,44 +308,45 @@ package.json or not"
  (not (not (executable-find "esy"))))
 
 ;;;###autoload
-(define-minor-mode esy-mode () 
-  "Minor mode for esy - the package manager for Reason/OCaml" 
+(define-minor-mode esy-mode
+  "Minor mode for esy - the package manager for Reason/OCaml"
   :lighter " esy"
-  (progn
-    (if (esy-mode-init)
-    (let* ((project (esy/project--of-buffer (current-buffer))))
-      (if (esy/project--p project)
-	  (progn
-	    
-	    ;;All npm and opam projects are valid esy projects
-	    ;;too! Picking the right package manager is important
-	    ;;- we don't want to run `esy` for a user who never
-	    ;;intended to. Example: bsb/npm users. Similarly,
-	    ;;opam users wouldn't want prompts to run `esy`. Why
-	    ;;is prompting `esy i` even necessary in the first
-	    ;;place? `esy ocamlmerlin-lsp` needs projects to
-	    ;;install/solve deps
+  (if esy-mode
+    (progn
+      (if (esy-mode-init)
+      (let* ((project (esy/project--of-buffer (current-buffer))))
+        (if (esy/project--p project)
+            (progn
 
-	    (let ((config-plist
-		   (let* ((project-type
-			  (esy/package-manager--of-project
-			   project))
-			 (callback
-			  (lambda (config-plist)
-			    (setq merlin-command (executable-find "ocamlmerlin"))
-			    (funcall esy-mode-callback))))
-		     (cond ((eq project-type 'opam)
-			    (esy/setup--opam project
-					     callback))
-			    ((eq project-type 'esy)
-			     (esy/setup--esy project
-					     callback))
-			    ((eq project-type 'npm)
-			     (esy/setup--npm project
-					     callback))))))
-	      ))
-	(message "Doesn't look like an esy project. esy-mode will stay dormant")))
-     (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh"))))
+              ;;All npm and opam projects are valid esy projects
+              ;;too! Picking the right package manager is important
+              ;;- we don't want to run `esy` for a user who never
+              ;;intended to. Example: bsb/npm users. Similarly,
+              ;;opam users wouldn't want prompts to run `esy`. Why
+              ;;is prompting `esy i` even necessary in the first
+              ;;place? `esy ocamlmerlin-lsp` needs projects to
+              ;;install/solve deps
+
+              (let ((config-plist
+          	   (let* ((project-type
+          		  (esy/package-manager--of-project
+          		   project))
+          		 (callback
+          		  (lambda (config-plist)
+          		    (setq merlin-command (executable-find "ocamlmerlin"))
+          		    (funcall esy-mode-callback))))
+          	     (cond ((eq project-type 'opam)
+          		    (esy/setup--opam project
+          				     callback))
+          		    ((eq project-type 'esy)
+          		     (esy/setup--esy project
+          				     callback))
+          		    ((eq project-type 'npm)
+          		     (esy/setup--npm project
+          				     callback))))))
+                ))
+          (message "Doesn't look like an esy project. esy-mode will stay dormant")))
+       (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))))
 
 (provide 'esy-mode)
 ;;; esy.el ends here

@@ -66,8 +66,8 @@
 
 ** Configuration
 
-   1. `esy-command` to specify full path to esy command if necessary. (Falls back to a just "esy')
-   2. `esy-mode-callback` to specify a callback that could run one all buffer local variables are initialised. For
+   1. =esy-command= to specify full path to esy command if necessary. (Falls back to a just "esy')
+   2. =esy-mode-callback= to specify a callback that could run one all buffer local variables are initialised. For
        more info on the buffer local variables, checkout the next section =How it works=.
 
 ** How it works 

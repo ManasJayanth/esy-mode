@@ -172,10 +172,16 @@
 ** Contributing guidelines
 
    Currently beta quality. Looking forward to ideas and feedback. If
-   you're raising a PR, please add a test. Not having types to catch
+   you're raising a PR, please add a test. (Please see [[** Testing Framework]] Not having types to catch
    your errors are hard - even if lisp somehow makes it bearable,
    let's ensure we still try to catch errors early!
     
+** Testing Framework
+
+   This project uses [[https://www.gnu.org/software/emacs/manual/html_node/ert/Running-Tests-Interactively.html#Running-Tests-Interactively][ERT]] for unit tests and some end-to-end
+   tests. Testing during development can be convenient with ERT's
+   interactive mode - =M-x ert=.
+
 ** License
 
    MIT licensed. Please see LICENSE for more details

@@ -21,7 +21,6 @@
 	     (if safe-guard
 	     (condition-case err
 		 (funcall body setup-result)
-	    
 	       (error (progn
 			(funcall teardown setup-result)
 			(signal (car err) (cdr err))
@@ -93,6 +92,37 @@
   (should (esy/manifest--json-p "/foo/bar/package.json"))
   (should (not (esy/manifest--json-p "/foo/opam")))
   (should (not (esy/manifest--json-p "/foo/foo.opam"))))
+
+(defun get-esy-status-json (project-path)
+  "Return 'esy status' json object for a project at specified path"
+  
+  (let* ((default-directory project-path)
+	 (json-str (shell-command-to-string (concat esy-command " status")))
+	 (json-array-type 'list)
+	 (json-key-type 'string)
+	 (json-false 'nil)
+	 (json-object-type 'hash-table))
+    (condition-case nil
+	      (json-read-from-string json-str)
+	    (error (progn
+		     (message "Error while json parsing 'esy status'")
+		     (make-hash-table))))))
+(ert-deftest
+    test-esy/project--manifest--file-name
+    ()
+  "must return only name of the manifest file. Eg. esy.json, package.json, foo.json etc"
+  (ert/test-suite
+   :setup (lambda (tmp-dir) (esy-test-utils/fixture--create tmp-dir))
+   :body (lambda (test-project-path)
+	   (let* ((test-project
+		   (esy/project--of-path test-project-path))
+		  (test-project-esy-status-json
+		   (get-esy-status-json test-project-path)))
+	     (should (eq
+		      (esy/project--manifest-of-file-name
+		       test-project-esy-json)
+		      "package.json"))))
+   :teardown (lambda (x) (delete-directory x t))))
 
 (ert-deftest
     test-esy/package-manager--of-project-when-esy
@@ -315,3 +345,12 @@ project with a package.json (but no esy field in it)"
 			    (should (not (esy/project--ready-p project)))))
 		  :teardown (lambda (fixture-project-path)
 			       (delete-directory fixture-project-path t))))
+
+(ert-deftest 
+    test-stdlib
+    ()
+  "Tests util library"
+  (should (equal (esy/p--join "foo/bar" "baz") "foo/bar/baz"))
+  (should (equal (esy/p--join "/base/path" "foo" "bar" "baz") "/base/path/foo/bar/baz"))
+  (should (equal (esy/lib--replace-in-string "foo" "bar" "foo is a good tool") "bar is a good tool")))
+

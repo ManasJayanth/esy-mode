@@ -20,6 +20,7 @@
 
 ;;; Code:
 (require 'json)
+(require 'cl-lib) ;; Because we use cl-reduce
 
 ;; Customization
 (defgroup esy nil
@@ -32,7 +33,7 @@
 (defvar esy-command "esy"
   "The 'esy' command. Can be full path to the esy binary.")
 
-(defvar esy-mode-callback (lambda ())
+(defvar esy-mode-callback (lambda (project-type))
   "The callback that can be run once an esy project is initialised. Common use case is to enable ask lsp client to connect to the server (since this can only be done after the esy project is ready)")
 
 (defun esy/f--read (file-path)
@@ -45,11 +46,31 @@
   "Write to file"
   (with-temp-file fname (insert data)))
 
+(defun esy/p--join (p1 &rest paths)
+  "Portable joining of two paths"
+  (cl-reduce
+   (lambda (p1 p2)
+     (concat (file-name-as-directory p1) p2))
+   (cons p1 paths)))
+
+(defun esy/lib--replace-in-string (what with in)
+  (replace-regexp-in-string (regexp-quote what) with in nil 'literal))
+
 (defun esy/internal--project--get-manifest-file-path
     (esy-status-json)
   "Given the json object of 'esy status' output,
 it returns the manifest file"
   (gethash "rootPackageConfigPath" esy-status-json))
+
+(defun esy/internal--project--manifest-file-name
+    (esy-status-json)
+  "Given esy esy-status-json object, returns the driving manifest
+ file name (esy.json, package.json, foo.json)"
+  (let*
+      ((manifest-path
+	(esy/internal--project--get-manifest-file-path esy-status-json))
+       (project-path (file-name-directory manifest-path)))
+    (esy/lib--replace-in-string (filename-as-directory (project-path)) "" manifest-path)))
 
 (defun esy/project--of-path (project-path)
   "Returns an abstract structure that can later
@@ -64,14 +85,24 @@ be used to obtain more info about the project"
 	  (condition-case nil
 	      (json-read-from-string json-str)
 	    (error (progn
-		     (message "Error while json parsing \
-'esy status'")
-		     (make-hash-table))))))
+		     (message "Error while json parsing 'esy status'")
+		     (make-hash-table)))))
+	 (manifest-file-name
+	  (esy/internal--project--get-manifest-file-name
+	   esy-status-json))
+	 (default-lock-file-path (esy/p--join
+				  project-path
+				  "esy.lock"
+				  "index.json"))
+	 (esy-lock-file-hash
+	  (cond (((string= manifest-file-name "esy.json")
+		  (esy/p--join
+		   (esy/p--join project-path "esy.lock")
+		   "index.json"))
+		 (t (error "Error occurred while matching lockfiles"))))))
     (list 'json esy-status-json
-	  'path (let* ((manifest-path (esy/internal--project--get-manifest-file-path esy-status-json)))
-		  (if manifest-path
-		      (file-name-directory manifest-path)
-		    nil)))))
+	  'manifest-hash esy-lock-file-hash
+	  'path project-path)))
 
 (defun esy/project--get-path (project)
   "Returns the root of the project"
@@ -300,6 +331,7 @@ package.json or not"
   "Initialises esy-mode with necessary config. Relies on global vars like esy-command esy-mode-callback"
  (make-local-variable 'process-environment)
  (make-local-variable 'exec-path)
+ (make-local-variable 'merlin-command)
  (if (file-exists-p esy-command)
      (let ((esy-bin-dir (file-name-directory esy-command)))
        (add-to-list 'exec-path esy-bin-dir)
@@ -334,7 +366,7 @@ package.json or not"
           		 (callback
           		  (lambda (config-plist)
           		    (setq merlin-command (executable-find "ocamlmerlin"))
-          		    (funcall esy-mode-callback))))
+          		    (funcall esy-mode-callback project-type))))
           	     (cond ((eq project-type 'opam)
           		    (esy/setup--opam project
           				     callback))

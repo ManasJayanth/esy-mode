@@ -307,9 +307,11 @@ package.json or not"
  ))
  (not (not (executable-find "esy"))))
 
-(defun esy-project-type ()
+(defun esy-project-type (&optional file-path)
   "Returns type of project - 'esy | 'opam | 'npm"
-  (let* ((project (esy/project--of-buffer (current-buffer))))
+  (let* ((project
+	  (if file-path (esy/project--of-file-path file-path)
+	    (esy/project--of-buffer (current-buffer)))))
     (esy/package-manager--of-project project)))
 
 ;;;###autoload

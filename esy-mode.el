@@ -307,46 +307,53 @@ package.json or not"
  ))
  (not (not (executable-find "esy"))))
 
+(defun esy-project-type ()
+  "Returns type of project - 'esy | 'opam | 'npm"
+  (let* ((project (esy/project--of-buffer (current-buffer))))
+    (esy/package-manager--of-project project)))
+
 ;;;###autoload
 (define-minor-mode esy-mode
   "Minor mode for esy - the package manager for Reason/OCaml"
   :lighter " esy"
   (if esy-mode
-    (progn
-      (if (esy-mode-init)
-      (let* ((project (esy/project--of-buffer (current-buffer))))
-        (if (esy/project--p project)
-            (progn
+  (progn
+    (if (esy-mode-init)
+    (let* ((project (esy/project--of-buffer (current-buffer))))
+      (if (esy/project--p project)
+	  (progn
+	    
+	    ;;All npm and opam projects are valid esy projects
+	    ;;too! Picking the right package manager is important
+	    ;;- we don't want to run `esy` for a user who never
+	    ;;intended to. Example: bsb/npm users. Similarly,
+	    ;;opam users wouldn't want prompts to run `esy`. Why
+	    ;;is prompting `esy i` even necessary in the first
+	    ;;place? `esy ocamlmerlin-lsp` needs projects to
+	    ;;install/solve deps
 
-              ;;All npm and opam projects are valid esy projects
-              ;;too! Picking the right package manager is important
-              ;;- we don't want to run `esy` for a user who never
-              ;;intended to. Example: bsb/npm users. Similarly,
-              ;;opam users wouldn't want prompts to run `esy`. Why
-              ;;is prompting `esy i` even necessary in the first
-              ;;place? `esy ocamlmerlin-lsp` needs projects to
-              ;;install/solve deps
-
-              (let ((config-plist
-          	   (let* ((project-type
-          		  (esy/package-manager--of-project
-          		   project))
-          		 (callback
-          		  (lambda (config-plist)
-          		    (setq merlin-command (executable-find "ocamlmerlin"))
-          		    (funcall esy-mode-callback))))
-          	     (cond ((eq project-type 'opam)
-          		    (esy/setup--opam project
-          				     callback))
-          		    ((eq project-type 'esy)
-          		     (esy/setup--esy project
-          				     callback))
-          		    ((eq project-type 'npm)
-          		     (esy/setup--npm project
-          				     callback))))))
-                ))
-          (message "Doesn't look like an esy project. esy-mode will stay dormant")))
-       (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))))
+	    (let ((config-plist
+		   (let* ((project-type
+			  (esy/package-manager--of-project
+			   project)))
+		     (cond ((eq project-type 'opam)
+			    (esy/setup--opam project
+					     (lambda
+					       (config-plist)
+					       (funcall esy-mode-callback 'opam))))
+			    ((eq project-type 'esy)
+			     (esy/setup--esy project
+					     (lambda
+					       (config-plist)
+					       (funcall esy-mode-callback 'esy))))
+			    ((eq project-type 'npm)
+			     (esy/setup--npm project
+					     (lambda
+					       (config-plist)
+					       (funcall esy-mode-callback 'npm))))))))
+	      ))
+	(message "Doesn't look like an esy project. esy-mode will stay dormant")))
+     (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))))
 
 (provide 'esy-mode)
 ;;; esy.el ends here

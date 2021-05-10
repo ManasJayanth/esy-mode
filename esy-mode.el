@@ -32,8 +32,10 @@
 (defvar esy-command "esy"
   "The 'esy' command. Can be full path to the esy binary.")
 
-(defvar esy-mode-callback (lambda ())
-  "The callback that can be run once an esy project is initialised. Common use case is to enable ask lsp client to connect to the server (since this can only be done after the esy project is ready)")
+(defvar esy-mode-callback (lambda (&optional project-type) nil)
+  "The callback that can be run once an esy project is initialised.
+Common use case is to enable ask lsp client to connect to the server
+(since this can only be done after the esy project is ready)")
 
 (defun esy/f--read (file-path)
   "Return file content."

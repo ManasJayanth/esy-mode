@@ -336,26 +336,25 @@ package.json or not"
 	    ;;place? `esy ocamlmerlin-lsp` needs projects to
 	    ;;install/solve deps
 
-	    (let ((config-plist
-		   (let* ((project-type
-			  (esy/package-manager--of-project
-			   project)))
-		     (cond ((eq project-type 'opam)
-			    (esy/setup--opam project
-					     (lambda
-					       (config-plist)
-					       (funcall esy-mode-callback 'opam))))
-			    ((eq project-type 'esy)
-			     (esy/setup--esy project
-					     (lambda
-					       (config-plist)
-					       (funcall esy-mode-callback 'esy))))
-			    ((eq project-type 'npm)
-			     (esy/setup--npm project
-					     (lambda
-					       (config-plist)
-					       (funcall esy-mode-callback 'npm))))))))
-	      ))
+	    (let* ((project-type (esy/package-manager--of-project project)))
+	      (cond ((eq project-type 'opam)
+		     (esy/setup--opam
+		      project
+		      (lambda
+			(config-plist)
+			(funcall esy-mode-callback 'opam))))
+		    ((eq project-type 'esy)
+		     (esy/setup--esy
+		      project
+		      (lambda
+			(config-plist)
+			(funcall esy-mode-callback 'esy))))
+		    ((eq project-type 'npm)
+		     (esy/setup--npm
+		      project
+		      (lambda
+			(config-plist)
+			(funcall esy-mode-callback 'npm)))))))
 	(message "Doesn't look like an esy project. esy-mode will stay dormant")))
      (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))))
 

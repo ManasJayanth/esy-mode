@@ -66,8 +66,8 @@ be used to obtain more info about the project"
 	  (condition-case nil
 	      (json-read-from-string json-str)
 	    (error (progn
-		     (message "Error while json parsing \
-'esy status'")
+		     (message (format "Error while json parsing \
+'esy status' -> %s" json-str))
 		     (make-hash-table))))))
     (list 'json esy-status-json
 	  'path (let* ((manifest-path (esy/internal--project--get-manifest-file-path esy-status-json)))
@@ -246,14 +246,14 @@ npm is incapable of
 	 (json-false 'nil)
 	 (json-object-type 'hash-table))
     (progn
-    (condition-case nil
-	(json-read-from-string json-str)
-      (error (progn
-	       (message "Error while json parsing")
-	       nil))))
+      (condition-case nil
+	  (json-read-from-string json-str)
+	(error (progn
+		 (message "Error while json parsing")
+		 nil)))))
     (progn
-      (message "Non JSON manifest not supported yet")
-      nil))))
+      (message (format "Non JSON manifest (%s) not supported yet" file-path))
+      nil)))
 
 (defun esy/manifest--json-p (file-path)
   "Takes a file path and returns if file at said path is
@@ -330,10 +330,36 @@ package.json or not"
 	(set-process-filter process 'comint-output-filter)) 
       (switch-to-buffer output-buffer-name))))
 
+(defun esy-view-source (dependency)
+  "Open dependency's source"
+  (interactive "sDependency: ")
+  (let* ((project (esy/project--of-buffer (current-buffer))))
+    (if (esy/project--p project)
+	(find-file
+	 (string-trim
+	  (shell-command-to-string
+	   (concat esy-command (format " echo '#{%s.root}'" dependency)))))
+      (message (format "Current buffer (%s) is not a part of an esy project" (buffer-name current-buffer))))))
+
+(defun esy-pesy ()
+  "Run esy pesy"
+  (interactive)
+  (run-cmd "*esy*" (list "esy" "pesy") (lambda () (message "[esy] Ran esy pesy"))))
+
 (defun esy-add (dependency &optional dev-only)
   "Run esy add <dependency>"
   (interactive "sDependency: ")
   (run-cmd "*esy*" (list "esy" "add" dependency) (lambda () (message "[esy] Added"))))
+
+(defun esy ()
+  "Run esy"
+  (interactive)
+  (run-cmd "*esy*" (list "esy") (lambda () (message "[esy] Finished"))))
+
+(defun esy-new (project-directory)
+  "Run esy"
+  (interactive "sProject Directory: ")
+  (run-cmd "*esy*" (list "pesy" "-d" project-directory) (lambda () (message "[esy] Finished"))))
 
 ;;;###autoload
 (define-minor-mode esy-mode

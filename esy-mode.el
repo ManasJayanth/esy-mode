@@ -250,10 +250,10 @@ npm is incapable of
 	(json-read-from-string json-str)
       (error (progn
 	       (message (format "Failed to parse JSON at %s" file-path))
-	       nil))))
+	       nil)))))
     (progn
       (message (format "File at %s doesn't appear to be a JSON. Non JSON manifest not supported yet" file-path))
-      nil))))
+      nil)))
 
 (defun esy/manifest--json-p (file-path)
   "Takes a file path and returns if file at said path is

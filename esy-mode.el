@@ -66,8 +66,8 @@ be used to obtain more info about the project"
 	  (condition-case nil
 	      (json-read-from-string json-str)
 	    (error (progn
-		     (message "Error while json parsing \
-'esy status'")
+		     (message (format "Error while json parsing \
+'esy status' -> %s" json-str))
 		     (make-hash-table))))))
     (list 'json esy-status-json
 	  'path (let* ((manifest-path (esy/internal--project--get-manifest-file-path esy-status-json)))
@@ -247,7 +247,7 @@ npm is incapable of
 	 (json-object-type 'hash-table))
     (progn
     (condition-case nil
-	(json-read-from-string json-str)
+	    (json-read-from-string json-str)
       (error (progn
 	       (message (format "Failed to parse JSON at %s" file-path))
 	       nil)))))
@@ -316,12 +316,58 @@ package.json or not"
 	    (esy/project--of-buffer (current-buffer)))))
     (esy/package-manager--of-project project)))
 
+(defun run-cmd (buffer-name cmd-and-args &optional callback) 
+  "Run the cmd" 
+  (interactive) 
+  (lexical-let ((callback-lex callback))
+    (let* ((output-buffer-name buffer-name) 
+	   (process (apply #'start-process (car cmd-and-args) output-buffer-name (car cmd-and-args) (cdr cmd-and-args)))) 
+     
+      (if callback-lex (set-process-sentinel process (lambda (process sentinel-msg) (message sentinel-msg) (cond ((string= sentinel-msg "finished\n") (funcall callback-lex))))))
+      (with-current-buffer (process-buffer process) 
+	(require 'shell) 
+	(shell-mode) 
+	(set-process-filter process 'comint-output-filter)) 
+      (switch-to-buffer output-buffer-name))))
+
+(defun esy-view-source (dependency)
+  "Open dependency's source"
+  (interactive "sDependency: ")
+  (let* ((project (esy/project--of-buffer (current-buffer))))
+    (if (esy/project--p project)
+	(find-file
+	 (string-trim
+	  (shell-command-to-string
+	   (concat esy-command (format " echo '#{%s.root}'" dependency)))))
+      (message (format "Current buffer (%s) is not a part of an esy project" (buffer-name current-buffer))))))
+
+(defun esy-pesy ()
+  "Run esy pesy"
+  (interactive)
+  (run-cmd "*esy*" (list "esy" "pesy") (lambda () (message "[esy] Ran esy pesy"))))
+
+(defun esy-add (dependency &optional dev-only)
+  "Run esy add <dependency>"
+  (interactive "sDependency: ")
+  (run-cmd "*esy*" (list "esy" "add" dependency) (lambda () (message "[esy] Added"))))
+
+(defun esy ()
+  "Run esy"
+  (interactive)
+  (run-cmd "*esy*" (list "esy") (lambda () (message "[esy] Finished"))))
+
+(defun esy-new (project-directory)
+  "Run esy"
+  (interactive "sProject Directory: ")
+  (run-cmd "*esy*" (list "pesy" "-d" project-directory) (lambda () (message "[esy] Finished"))))
+
 ;;;###autoload
 (define-minor-mode esy-mode
   "Minor mode for esy - the package manager for Reason/OCaml"
   :lighter " esy"
   (if esy-mode
   (progn
+    (setq lexical-binding t)
     (if (esy-mode-init)
     (let* ((project (esy/project--of-buffer (current-buffer))))
       (if (esy/project--p project)

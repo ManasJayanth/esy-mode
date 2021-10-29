@@ -246,13 +246,13 @@ npm is incapable of
 	 (json-false 'nil)
 	 (json-object-type 'hash-table))
     (progn
-      (condition-case nil
-	  (json-read-from-string json-str)
-	(error (progn
-		 (message "Error while json parsing")
-		 nil)))))
+    (condition-case nil
+	    (json-read-from-string json-str)
+      (error (progn
+	       (message (format "Failed to parse JSON at %s" file-path))
+	       nil)))))
     (progn
-      (message (format "Non JSON manifest (%s) not supported yet" file-path))
+      (message (format "File at %s doesn't appear to be a JSON. Non JSON manifest not supported yet" file-path))
       nil)))
 
 (defun esy/manifest--json-p (file-path)

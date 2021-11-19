@@ -365,11 +365,8 @@ package.json or not"
     (file-path)
   "Given the path of a file in the project,
 it returns if the project is ready for development"
-  (let* ((project (esy/project--of-file-path file-path))
-	 (manifest-file-path
-	  (esy/project--get-manifest-file-path project))
-	 (esy-status-json (esy/manifest--of-path manifest-file-path)))
-    (gethash "isProjectReadyForDev" esy-status-json)))
+  (let* ((project (esy/project--of-file-path file-path)))
+    (esy/project--ready-p project)))
 
 ;;;###autoload
 (define-minor-mode esy-mode

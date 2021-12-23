@@ -380,14 +380,14 @@ it returns if the project is ready for development"
       (if (esy/project--p project)
 	  (progn
 	    
-	    ;;All npm and opam projects are valid esy projects
-	    ;;too! Picking the right package manager is important
-	    ;;- we don't want to run `esy` for a user who never
-	    ;;intended to. Example: bsb/npm users. Similarly,
-	    ;;opam users wouldn't want prompts to run `esy`. Why
-	    ;;is prompting `esy i` even necessary in the first
-	    ;;place? `esy ocamlmerlin-lsp` needs projects to
-	    ;;install/solve deps
+	    ;; All npm and opam projects are valid esy projects
+	    ;; too! Picking the right package manager is important
+	    ;; - we don't want to run `esy` for a user who never
+	    ;; intended to. Example: bsb/npm users. Similarly,
+	    ;; opam users wouldn't want prompts to run `esy`. Why
+	    ;; is prompting `esy i` even necessary in the first
+	    ;; place? `esy ocamlmerlin-lsp` needs projects to
+	    ;; install/solve deps
 
 	    (let* ((project-type (esy/package-manager--of-project project)))
 	      (cond ((eq project-type 'opam)

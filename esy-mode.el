@@ -120,7 +120,7 @@ command-env"
 	(condition-case
 	    nil
 	    (shell-command-to-string
-	     "esy command-env --json")
+	     (concat esy-command " command-env --json"))
 	  (error (progn
 		   (message
 		    "Error while running 'esy command-env --json'")

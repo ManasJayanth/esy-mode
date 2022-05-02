@@ -73,7 +73,7 @@ be used to obtain more info about the project"
 	  'path (let* ((manifest-path (esy/internal--project--get-manifest-file-path esy-status-json)))
 		  (if manifest-path
 		      (file-name-directory manifest-path)
-		    nil)))))
+		      (read-file-name "Couldn't detect project root. Enter project root (where opam or esy manifests are present): "  (file-name-as-directory default-directory)))))))
 
 (defun esy/project--get-path (project)
   "Returns the root of the project"
@@ -123,12 +123,12 @@ command-env"
        (default-directory project-path)
        (json-str
 	(condition-case
-	    nil
+	    err
 	    (shell-command-to-string
 	     (concat esy-command " command-env --json"))
 	  (error (progn
-		   (message
-		    "Error while running 'esy command-env --json'")
+		   (debug err)
+		   (message "Error while running 'esy command-env --json' %s" (error-message-string err))
 		   "{}"))))
 	 (json-array-type 'list)
 	 (json-key-type 'string)
@@ -214,7 +214,8 @@ for development"
 
 (defun esy/setup--opam (project callback)
   "setup--opam(_): currently doesn't do anything. opam-user-setup works well enough, IMO!"
-  (message "Detected an opam project. Staying dormant"))
+  (message "Detected an opam project. Experimental support.")
+  (esy/setup--esy project callback))
 
 (defun esy/setup--npm(project callback)
 

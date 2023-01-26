@@ -6,6 +6,7 @@
 ;; Created: 1 Jan 2020
 ;; Keywords: Reason, OCaml
 ;; Homepage: http://example.com/foo
+;; Package-Requires: ((emacs "25.1") (transient "0.3.6"))
 
 
 ;;; Commentary:
@@ -20,6 +21,7 @@
 
 ;;; Code:
 (require 'json)
+(require 'transient)
 
 ;; Customization
 (defgroup esy nil
@@ -424,7 +426,7 @@ package.json or not"
   (interactive)
   (run-esy (list "npm-release") (lambda () (message "[esy]  NPM release done"))))
 
-(define-transient-command esy-install ()
+(transient-define-prefix esy-install ()
   "Open esy install transient menu pop up."
     ["Arguments"
      ("-p" "Package name providing the ocaml compiler"        "--ocaml-pkg-name=")
@@ -435,20 +437,16 @@ package.json or not"
      ("-or" "HTTP url to remote opam override repository. For more info, see (TODO document this at esy.sh)" "--opam-override-repository-remote=")
     ]
     [["Command"
-      ("i" "Install"       esy/cmd-install)]]
-  (interactive)
-  (transient-setup 'esy/cmd-install))
+      ("i" "Install"       esy/cmd-install)]])
 
-(define-transient-command esy-build ()
+(transient-define-prefix esy-build ()
   "Open esy build transient menu pop up."
     ["Arguments"
      ("-p" "Package name providing the ocaml compiler"        "--ocaml-pkg-name")
      ("-v" " OCaml compiler version"        "--ocaml-version")
     ]
     [["Command"
-      ("b" "Build"       esy-build)]]
-  (interactive)
-  (transient-setup 'esy/cmd-build))
+      ("b" "Build"       esy-build)]])
 
 
 (defun esy-test ()
@@ -462,7 +460,7 @@ package.json or not"
   (run-esy (list command) (lambda () (message "[esy] done"))))
 
 ;; Entrypoint menu
-(define-transient-command esy-menu ()
+(transient-define-prefix esy-menu ()
   "Open esy transient menu pop up."
     [["Command"
       ("e" "Build and install"       esy-build-and-install)
@@ -471,9 +469,7 @@ package.json or not"
       ("r" "Run Script"       esy-run-script)
       ("n" "Run npm-release"       esy-npm-release)
       ("t" "Test"       esy-test)
-    ]]
-  (interactive)
-  (transient-setup 'esy-menu))
+    ]])
 
 (defun esy ()
   "Entrypoint function to the esy-mode interactive functions

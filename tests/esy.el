@@ -43,7 +43,7 @@
       (make-directory test-esy-project-dir)
       (esy-test-utils/f--write
        test-esy-project-manifest
-       "{ \"dependencies\": {} }")
+       "{ \"esy\": {}, \"dependencies\": {} }")
       test-esy-project-dir)))
 
 (defun esy-test-utils/fixture--create-npm (tmp-dir)
@@ -77,8 +77,10 @@
       (make-directory test-esy-project-dir)
       (esy-test-utils/f--write
        test-esy-project-manifest
-       "name: \"foo\"")
+       "name: \"foo\"\nopam-version: \"2.0\"")
       test-esy-project-dir)))
+
+(defun add-two (n) (+ n 2))
 
 (ert-deftest 
     test-add-two
@@ -95,38 +97,35 @@
   (should (not (esy/manifest--json-p "/foo/foo.opam"))))
 
 (ert-deftest
-    test-esy/package-manager--of-project-when-esy
+    test-esy/internal-package-manager--of-project-when-esy
     ()
-  "package-manager--of-project must return correct project type"
+  "internal-package-manager--of-project must return correct project type"
   (ert/test-suite
    :setup (lambda (tmp-dir) (esy-test-utils/fixture--create tmp-dir))
    :body (lambda (test-project-path)
-	   (let ((test-project (esy/project--of-path test-project-path)))
 	   (should (eq
-		    (esy/package-manager--of-project test-project)
-		    'esy))))
+		    (esy/internal-package-manager--of-project (concat test-project-path "/esy.json"))
+		    'esy)))
    :teardown (lambda (x) (delete-directory x t))))
 
 (ert-deftest
-    test-esy/package-manager--of-project-when-opam
+    test-esy/internal-package-manager--of-project-when-opam
     ()
-  "package-manager--of-project must properly detect an opam project
+  "internal-package-manager--of-project must properly detect an opam project
 with an opam file"
   (ert/test-suite
    :setup (lambda (tmp-dir)
 	    (esy-test-utils/fixture--create-opam tmp-dir))
    :body (lambda (test-project-path)
-	   (let ((test-project
-		  (esy/project--of-path test-project-path)))
 	   (should (eq
-		    (esy/package-manager--of-project test-project)
-		    'opam))))
+		    (esy/internal-package-manager--of-project (concat test-project-path "/foo.opam"))
+		    'opam)))
    :teardown (lambda (x) (delete-directory x t))))
 
 (ert-deftest
-    test-esy/package-manager--of-project-when-npm
+    test-esy/internal-package-manager--of-project-when-npm
     ()
-  "package-manager--of-project must properly detect an npm 
+  "internal-package-manager--of-project must properly detect an npm 
 project with a package.json (but no esy field in it)"
   (ert/test-suite
    :setup (lambda
@@ -134,12 +133,10 @@ project with a package.json (but no esy field in it)"
 	    (esy-test-utils/fixture--create-npm tmp-dir))
    :body (lambda
 	   (test-project-path)
-	   (let ((test-project
-		  (esy/project--of-path test-project-path)))
-	     (should (eq
-		      (esy/package-manager--of-project
-		       test-project)
-		      'npm))))
+	   (should (eq
+		      (esy/internal-package-manager--of-project
+		       (concat test-project-path "/package.json"))
+		      'npm)))
    :teardown (lambda
 	       (x)
 	       (delete-directory x t))))

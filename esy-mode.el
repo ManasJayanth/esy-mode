@@ -16,6 +16,12 @@
 ;; "esy exec-command refmt" only if it is present (in an OCaml only
 ;; project it need not be available).
 
+
+;; TIP: To test individual defuns, consider the following example;
+;; (esy/process-env-to-exec-path
+;;   (esy/opam--process-environment-of-project
+;;     (esy/project--of-path "/Users/manas/development/ligolang/ligo")))
+
 ;;; Change Log: TODO
 
 ;;; Code:
@@ -48,41 +54,99 @@ Common use case is to enable ask lsp client to connect to the server
   "Write to file"
   (with-temp-file fname (insert data)))
 
-(defun esy/internal--project--get-manifest-file-path
-    (esy-status-json)
+(defun esy/internal--persist-obj (obj file-path)
+  "Persists object to file"
+  (esy/f--write file-path (prin1-to-string obj)))
+
+(defun esy/internal--read-obj (file-path)
+  "Reads object from file"
+  (car (read-from-string (esy/f--read file-path))))
+
+(defun esy/project--persist (project)
+  "Persist project indexed by path"
+  (let* ((project-db-name "esy-projects.db")
+	 (project-db-path (concat "~/.emacs.d/" project-db-name))
+	 (db (condition-case
+		 err
+		 (esy/internal--read-obj project-db-path)
+	       (error (make-hash-table))))
+	 (project-path (esy/project--get-path project)))
+    (puthash project-path project db)
+    (esy/internal--persist-obj db project-db-path)))
+
+(defun esy/project--read-db (project-path)
+    "Load a project"
+  (let* ((project-db-name "esy-projects.db")
+	 (project-db-path (concat "~/.emacs.d/" project-db-name))
+	 (db (condition-case
+		 err
+		 (esy/internal--read-obj project-db-path)
+	         (message "not nilllllll")
+	       (error (princ (format "The error was: %s" err)) (make-hash-table)))))
+    (gethash project-path db)))
+
+(defun esy/internal-status--get-manifest-file-path (esy-status)
   "Given the json object of 'esy status' output,
 it returns the manifest file"
-  (gethash "rootPackageConfigPath" esy-status-json))
+  (gethash "rootPackageConfigPath" esy-status))
 
-(defun esy/project--of-path (project-path)
-  "Returns an abstract structure that can later
-be used to obtain more info about the project"
-  (let* ((default-directory project-path)
+(defun esy/internal--cwd-of-buffer (buffer)
+  "Given buffer, finds tries to find the cwd of the file attached to the buffer.
+Returns nil, if it fails"
+  (let* ((file-name (buffer-file-name buffer)))
+    (if file-name (file-name-directory file-name) nil)))
+
+(defun esy/internal--cwd-of-buffer-or-default (buffer)
+  "Same as esy/internal--cwd-of-buffer, but returns default-directory if cwd of attached
+buffer could not be found"
+  (let ((cwd (esy/internal--cwd-of-buffer buffer)))
+    (if cwd cwd default-directory)))
+
+(defun esy/internal--esy-status (cwd)
+  "Given a working directory path (default or a buffer's file directory), returns project root"
+  (let* ((default-directory cwd)
 	 (json-str (shell-command-to-string (concat esy-command " status")))
 	 (json-array-type 'list)
 	 (json-key-type 'string)
 	 (json-false 'nil)
-	 (json-object-type 'hash-table)
-	 (esy-status-json
-	  (condition-case nil
-	      (json-read-from-string json-str)
-	    (error (progn
-		     (message (format "Error while json parsing \
+	 (json-object-type 'hash-table))
+    (condition-case nil
+	(json-read-from-string json-str)
+      (error (progn
+	       (message (format "Error while json parsing \
 'esy status' -> %s" json-str))
-		     (make-hash-table))))))
-    (list 'json esy-status-json
-	  'path (let* ((manifest-path (esy/internal--project--get-manifest-file-path esy-status-json)))
-		  (if manifest-path
-		      (file-name-directory manifest-path)
-		      (read-file-name "Couldn't detect project root. Enter project root (where opam or esy manifests are present): "  (file-name-as-directory default-directory)))))))
+	       (make-hash-table))))))
 
+(defun esy/internal--esy-status-of-buffer (buffer)
+  "Returns 'esy status' output for a project associated with the given buffer"
+  (let* ((cwd (esy/internal--cwd-of-buffer-or-default buffer)))
+    (esy/internal--esy-status cwd)))
+
+(defun esy/project--of-path (project-path)
+  "Returns an abstract structure that can later
+be used to obtain more info about the project"
+  (let* ((esy-status-json (esy/internal--esy-status project-path))
+	 (manifest-path
+	  (esy/internal-status--get-manifest-file-path esy-status-json))
+	 (project-path (if manifest-path (file-name-directory manifest-path)
+		    (read-file-name "Couldn't detect project root. Enter project root (where opam or esy manifests are present): "  (file-name-as-directory default-directory)))))
+    (list 'json esy-status-json
+	  'usable 'not-solved ;; | 'solved-not-fetched | 'fetched-not-built | 'built-and-ready
+	  'path project-path
+	  'type (esy/internal-package-manager--of-project manifest-path))))
+
+;; Getters and setters for type project
 (defun esy/project--get-path (project)
   "Returns the root of the project"
   (plist-get project 'path))
 
+(defun esy/project--get-type (project)
+  "Returns type (npm|opam|esy) of project"
+  (plist-get project 'type))
+
 (defun esy/project--get-manifest-file-path (project)
   "Returns the path to manifest file"
-  (esy/internal--project--get-manifest-file-path
+  (esy/internal-status--get-manifest-file-path
    (plist-get project 'json)))
 
 (defun esy/project--of-file-path (file-path)
@@ -94,12 +158,15 @@ later be used to obtain more info about the esy project"
 	     (file-directory-p parent-path))
 	(make-directory parent-path t)
 	(message (format "esy-mode just created %s for you. If this is annoying, please raise a ticket." parent-path)))
-      (esy/project--of-path parent-path))))
+      (esy/project--of-cwd parent-path))))
 
 (defun esy/project--of-buffer (buffer)
   "Returns an abstract structure that can
 later be used to obtain more info about the esy project"
-  (let* ((file-name (buffer-file-name buffer))) (if file-name (esy/project--of-file-path file-name) (esy/project--of-path default-directory))))
+  (let* ((file-name (buffer-file-name buffer)))
+    (if file-name
+	(esy/project--of-file-path file-name)
+      (esy/project--of-path default-directory))))
 
 (defun esy/project--fetched-p (project)
   "Returns if a given project's sources have been solved and fetched. This
@@ -139,6 +206,28 @@ command-env"
 	  (json-read-from-string json-str)))
     (list 'command-env esy-command-env-json)))
 
+(defun esy/opam--process-environment-of-project (project)
+  "Given a project, it returns an abstract structure
+representing opam env"
+  (let*
+      ((project-path (esy/project--get-path project))
+       (default-directory project-path)
+       ;; We use opam exec -- env and not opam env,
+       ;; because, opam env returns values that are meant
+       ;; to be executed by a shell like bash
+       ;; Ex: OPAM_SWITCH_PREFIX='/Users/<user>/.opam/default'; export OPAM_SWITCH_PREFIX;
+       ;; We just need key, value pairs.
+       (env-str
+	(condition-case
+	    err
+	    (shell-command-to-string
+	     "opam exec -- env")
+	  (error (progn
+		   (debug err)
+		   (message "Error while running 'opam exec -- env' %s" (error-message-string err))
+		   "{}")))))
+    (split-string env-str "\n")))
+
 (defun esy/command-env--to-process-environment (command-env)
   "Given a command-env, it turns it into a list
 that can be assigned to 'process-environment"
@@ -151,22 +240,23 @@ that can be assigned to 'process-environment"
 	       command-env-json)
       penv)))
 
+(defun esy/process-env-to-exec-path (penv)
+  "Given a list of environment variables (ex: '(\"PATH=/foo/bar\" \"LDFLAGS=some_values\")'),
+gets just exec-path" 
+  (let* ((path-env-str-list
+	  (seq-filter (lambda (s) (string-match "^path=" s)) penv))
+	 (path-env-str-key-value (car path-env-str-list))
+	 (path-env-str (nth 1 (split-string path-env-str-key-value "="))))
+    (split-string path-env-str
+     (if (string= system-type "windows-nt") ";" ":"))))
+
 (defun esy/command-env--get-exec-path (command-env)
   "Given a command-env, it turns it into a list that
 can be assigned to 'exec-path"
   (let* ((penv
 	  (esy/command-env--to-process-environment
-	   command-env))
-	 (exec-path-list '())
-	 (path-env-str-list (seq-filter
-			(lambda (s) (string-match "^path$" s))
-			penv)))
-    (setq exec-path-list
-			(split-string
-			 (gethash "PATH" (nth 1 command-env))
-			 (if (string=
-			      system-type
-			      "windows-nt") ";" ":")))))
+	   command-env)))
+    (setq exec-path-list (esy/process-env-to-exec-path penv))))
 
 (defun esy/setup--esy-get-available-tools (project)
 
@@ -214,9 +304,11 @@ for development"
     nil))
 
 (defun esy/setup--opam (project callback)
-  "setup--opam(_): currently doesn't do anything. opam-user-setup works well enough, IMO!"
   (message "Detected an opam project. Experimental support.")
-  (esy/setup--esy project callback))
+  (setq process-environment
+	(esy/opam--process-environment-of-project project))
+  (setq exec-path (esy/process-env-to-exec-path process-environment)))
+
 
 (defun esy/setup--npm(project callback)
 
@@ -279,32 +371,33 @@ package.json or not"
   "Checks if a manifest structure contains esy field"
   (if manifest (gethash "esy" manifest) nil))
 
-(defun esy/package-manager--of-project (project)
+(defun esy/internal-package-manager--of-project (manifest-file-path)
   "Detect the package manager of the project. Returns either
-'esy|'opam|'npm"
-  (let* ((manifest-file-path
-	  (esy/project--get-manifest-file-path project)))
-	 (if (esy/manifest--json-p manifest-file-path)
-	     ;; The manifest file is a json.
-	     (if (esy/manifest--package-json-p
-		  manifest-file-path)
-		 ;; Could be npm or esy
-		 (if (esy/project--ready-p project)
-		     ;; esy says this project with package.json
-		     ;; is ready for development i.e. all it's
-		     ;; dependencies were fetched and installed
-		     ;; by esy. Definitely an esy project
-		     'esy
-		   (progn
-		     ;; Checking if there is an esy field in
-		     ;; the package.json. If there is one,
-		     ;; it's an esy project
-		     (if (esy/manifest--contains-esy-field-p
-			  (esy/manifest--of-path manifest-file-path))
-			 'esy
-		       'npm)))
-	       'esy)
-	   'opam)))
+'esy|'opam|'npm. Note, manifest-file-path is expected to be either an opam file or json.
+This assumes that this value comes from `esy status`'s output"
+  (if (esy/manifest--json-p manifest-file-path)
+      ;; The manifest file is a json.
+      (if (esy/manifest--package-json-p
+	   manifest-file-path)
+	  ;; Could be npm or esy
+	  ;; Checking if there is an esy field in
+	  ;; the package.json. If there is one,
+	  ;; it's an esy project
+	  (if (esy/manifest--contains-esy-field-p
+		   (esy/manifest--of-path manifest-file-path))
+		  'esy
+		'npm)
+	;; Previously, we believed the following,
+	;; > esy says this project with package.json
+	;; > is ready for development i.e. all it's
+	;; > dependencies were fetched and installed
+	;; > by esy. Definitely an esy project
+	;; Should we reconsider this?
+	(if (esy/manifest--contains-esy-field-p
+	     (esy/manifest--of-path manifest-file-path))
+	    'esy
+	  nil))
+    'opam))
 
 
 (defun esy-mode-init ()
@@ -323,7 +416,7 @@ package.json or not"
   (let* ((project
 	  (if file-path (esy/project--of-file-path file-path)
 	    (esy/project--of-buffer (current-buffer)))))
-    (esy/package-manager--of-project project)))
+    (esy/project--get-type project)))
 
 (defun run-cmd-legacy (buffer-name cmd-and-args &optional callback)
   "Run the cmd" 
@@ -528,7 +621,8 @@ it returns if the project is ready for development"
   (if esy-mode
   (progn
     (if (esy-mode-init)
-    (let* ((project (esy/project--of-buffer (current-buffer))))
+	(let* ((project (esy/project--cached-of-buffer (current-buffer))))
+      (esy/project--persist project)
       (if (esy/project--p project)
 	  (progn
 	    
@@ -541,7 +635,7 @@ it returns if the project is ready for development"
 	    ;; place? `esy ocamlmerlin-lsp` needs projects to
 	    ;; install/solve deps
 
-	    (let* ((project-type (esy/package-manager--of-project project)))
+	    (let* ((project-type (esy/project--get-type project)))
 	      (cond ((eq project-type 'opam)
 		     (esy/setup--opam
 		      project

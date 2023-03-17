@@ -44,6 +44,9 @@
 Common use case is to enable ask lsp client to connect to the server
 (since this can only be done after the esy project is ready)")
 
+(defun esy--make-hash-table ()
+  (make-hash-table :test 'equal))
+
 (defun esy/f--read (file-path)
   "Return file content."
   (with-temp-buffer
@@ -60,7 +63,7 @@ Common use case is to enable ask lsp client to connect to the server
 
 (defun esy/internal--read-obj (file-path)
   "Reads object from file"
-  (car (read-from-string (esy/f--read file-path))))
+  (eval (car (read-from-string (esy/f--read file-path)))))
 
 (defun esy/project--persist (project)
   "Persist project indexed by path"
@@ -69,7 +72,7 @@ Common use case is to enable ask lsp client to connect to the server
 	 (db (condition-case
 		 err
 		 (esy/internal--read-obj project-db-path)
-	       (error (make-hash-table))))
+	       (error (esy--make-hash-table))))
 	 (project-path (esy/project--get-path project)))
     (puthash project-path project db)
     (esy/internal--persist-obj db project-db-path)))
@@ -82,7 +85,7 @@ Common use case is to enable ask lsp client to connect to the server
 		 err
 		 (esy/internal--read-obj project-db-path)
 	         (message "not nilllllll")
-	       (error (princ (format "The error was: %s" err)) (make-hash-table)))))
+	       (error (princ (format "The error was: %s" err)) (esy--make-hash-table)))))
     (gethash project-path db)))
 
 (defun esy/internal-status--get-manifest-file-path (esy-status)
@@ -115,7 +118,7 @@ buffer could not be found"
       (error (progn
 	       (message (format "Error while json parsing \
 'esy status' -> %s" json-str))
-	       (make-hash-table))))))
+	       (esy--make-hash-table))))))
 
 (defun esy/internal--esy-status-of-buffer (buffer)
   "Returns 'esy status' output for a project associated with the given buffer"

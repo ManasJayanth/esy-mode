@@ -84,7 +84,6 @@ Common use case is to enable ask lsp client to connect to the server
 	 (db (condition-case
 		 err
 		 (esy/internal--read-obj project-db-path)
-	         (message "not nilllllll")
 	       (error (princ (format "The error was: %s" err)) (esy--make-hash-table)))))
     (gethash project-path db)))
 
@@ -93,11 +92,21 @@ Common use case is to enable ask lsp client to connect to the server
 it returns the manifest file"
   (gethash "rootPackageConfigPath" esy-status))
 
+(defun esy/internal-status--get-project-root (esy-status)
+  "Given the json object of 'esy status' output,
+it returns the manifest file"
+  (file-name-directory (esy/internal-status--get-manifest-file-path esy-status)))
+
 (defun esy/internal--cwd-of-buffer (buffer)
   "Given buffer, finds tries to find the cwd of the file attached to the buffer.
 Returns nil, if it fails"
   (let* ((file-name (buffer-file-name buffer)))
     (if file-name (file-name-directory file-name) nil)))
+
+(defun esy/internal--root-of-cwd (cwd)
+  "Given current working directory, get's project root using 'esy status' command"
+  (let* ((esy-status (esy/internal--esy-status cwd)))
+    (esy/internal-status--get-project-root esy-status)))
 
 (defun esy/internal--cwd-of-buffer-or-default (buffer)
   "Same as esy/internal--cwd-of-buffer, but returns default-directory if cwd of attached
@@ -175,6 +184,12 @@ later be used to obtain more info about the esy project"
     (if file-name
 	(esy/project--of-file-path file-name)
       (esy/project--of-path default-directory))))
+
+(defun esy/cached-project--of-buffer (buffer)
+  "Looks up the project db first, then call esy/project--of-buffer if necessary"
+  (let* ((project-root (esy/internal--root-of-cwd (esy/internal--cwd-of-buffer buffer)))
+	(cached-project (esy/project--read-db project-root)))
+    (if cached-project cached-project (esy/project--of-buffer buffer))))
 
 (defun esy/project--fetched-p (project)
   "Returns if a given project's sources have been solved and fetched. This
@@ -629,7 +644,7 @@ it returns if the project is ready for development"
   (if esy-mode
   (progn
     (if (esy-mode-init)
-	(let* ((project (esy/project--of-buffer (current-buffer))))
+	(let* ((project (esy/cached-project--of-buffer (current-buffer))))
       (esy/project--persist project)
       (if (esy/project--p project)
 	  (progn

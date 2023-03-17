@@ -135,6 +135,11 @@ be used to obtain more info about the project"
 	  'path project-path
 	  'type (esy/internal-package-manager--of-project manifest-path))))
 
+(defun esy/project--of-cwd (project-path)
+  "Alias for esy/project--of-path"
+  (esy/project--of-path project-path))
+
+
 ;; Getters and setters for type project
 (defun esy/project--get-path (project)
   "Returns the root of the project"
@@ -621,7 +626,7 @@ it returns if the project is ready for development"
   (if esy-mode
   (progn
     (if (esy-mode-init)
-	(let* ((project (esy/project--cached-of-buffer (current-buffer))))
+	(let* ((project (esy/project--of-buffer (current-buffer))))
       (esy/project--persist project)
       (if (esy/project--p project)
 	  (progn

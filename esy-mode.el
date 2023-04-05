@@ -602,7 +602,7 @@ First checks if file backing the current buffer is a part of an esy project, the
 
 (defun run-esy (args callback)
   "Runs esy command in *esy* buffer"
-  (let ((command (if args (append args esy-command) (list esy-command))))
+  (let ((command (if args (push esy-command args) (list esy-command))))
   (run-cmd
    "*esy*"
    command

@@ -637,6 +637,79 @@ it returns if the project is ready for development"
   (interactive)
   (run-esy (list "build-dependencies") (lambda () (message "[esy] Finished"))))
 
+(defvar esy-build-shell-file-path "esy"
+  "Path to the program used by `esy-build-shell-run'")
+
+(defvar esy-build-shell-arguments '("build-shell")
+  "Commandline arguments to pass to `esy-build-shell'.")
+
+(defvar esy-build-shell-mode-map
+  (let ((map (nconc (make-sparse-keymap) comint-mode-map)))
+    ;; example definition
+    (define-key map "\t" 'completion-at-point)
+    map)
+  "Basic mode map for `esy-build-shell'.")
+
+(defvar esy-build-shell-prompt-regexp "\\[build [^\]]+\\] %" ;; "^\\(?:\\[build [\\]]+\\]\\)"
+  "Prompt for `esy-build-shell'.")
+
+(defvar esy-build-shell-buffer-name "*Esy Build Shell*"
+  "Name of the buffer to use for the `esy-build-shell' comint instance.")
+
+(defun esy-build-shell-run ()
+  "Run an inferior instance of `esy-build-shell' inside Emacs."
+  (interactive)
+  (let* ((esy-build-shell-program esy-build-shell-file-path)
+         (buffer (get-buffer-create esy-build-shell-buffer-name))
+         (proc-alive (comint-check-proc buffer))
+         (process (get-buffer-process buffer))
+	 (package-name (thing-at-point 'symbol t)))
+    (setq esy-build-shell-arguments (if package-name (list "build-shell" "-p" package-name) esy-build-shell-arguments))
+    ;; if the process is dead then re-create the process and reset the
+    ;; mode.
+    (unless proc-alive
+      (with-current-buffer buffer
+	(make-local-variable 'default-directory)
+	(setq default-directory (esy/internal--cwd-of-buffer-or-default buffer))
+	(apply 'make-comint-in-buffer "Esy Build Shell" buffer
+	       esy-build-shell-program nil esy-build-shell-arguments)
+        (esy-build-shell-mode)))
+    ;; Regardless, provided we have a valid buffer, we pop to it.
+    (when buffer
+      (pop-to-buffer buffer))))
+
+(defun esy-build-shell--initialize ()
+  "Helper function to initialize esy-build-shell."
+  (setq comint-process-echoes t)
+  (setq comint-use-prompt-regexp t))
+
+
+(define-derived-mode esy-build-shell-mode comint-mode "Esy Build Shell"
+  "Major mode for `esy-build-shell'.
+
+\\<esy-build-shell-mode-map>"
+  ;; this sets up the prompt so it matches things like: [foo@bar]
+  (setq comint-prompt-regexp esy-build-shell-prompt-regexp)
+  ;; this makes it read only; a contentious subject as some prefer the
+  ;; buffer to be overwritable.
+  (setq comint-prompt-read-only t)
+  ;; this makes it so commands like M-{ and M-} work.
+  (set (make-local-variable 'paragraph-separate) "\\'")
+  (set (make-local-variable 'font-lock-defaults) '(esy-build-shell-font-lock-keywords t))
+  (set (make-local-variable 'paragraph-start) esy-build-shell-prompt-regexp))
+
+(add-hook 'esy-build-shell-mode-hook 'esy-build-shell--initialize)
+
+(defconst esy-build-shell-keywords
+  '()
+  "List of keywords to highlight in `esy-build-shell-font-lock-keywords'.")
+
+(defvar esy-build-shell-font-lock-keywords
+  (list
+   ;; highlight all the reserved commands.
+   `(,(concat "\\_<" (regexp-opt esy-build-shell-keywords) "\\_>") . font-lock-keyword-face))
+  "Additional expressions to highlight in `esy-build-shell-mode'.")
+
 ;;;###autoload
 (define-minor-mode esy-mode
   "Minor mode for esy - the package manager for Reason/OCaml"

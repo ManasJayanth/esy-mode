@@ -40,6 +40,9 @@
 (defvar esy-command "esy"
   "The 'esy' command. Can be full path to the esy binary.")
 
+(defvar esy-package-command "esy-package"
+  "Command (that the default shell can resolve by itself, if full path isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
+
 (defvar esy-mode-callback (lambda (&optional project-type) (message (format "%s project ready for development" project-type)))
   "The callback that can be run once an esy project is initialised.
 Common use case is to enable ask lsp client to connect to the server
@@ -586,6 +589,34 @@ This assumes that this value comes from `esy status`'s output"
       ("n" "Run npm-release"       esy-npm-release)
       ("t" "Test"       esy-test)
     ]])
+
+(defun esy-package--run (args)
+  "Runs esy-package command in *esy-package* buffer"
+  (let* ((command (if args
+		     (push esy-package-command args)
+		    (list esy-package-command))))
+    (apply
+     #'start-process
+     (append
+      '("esy-package-<todo-buffer-name>" "*esy-package-<todo-buffer-name>*" )
+      command) '(:stderr "*esy-package-stderr<todo-buffer-name>*"))))
+
+(esy-package--run '("fetch"))
+    
+
+
+
+  (run-cmd
+   "*esy-package*"
+   command
+   (lambda ()
+     (with-current-buffer
+	 "*esy-package*"
+       (callback))))))
+
+(defun esy-package-fetch ()
+  "Entrypoint defun to fetch a package tarball mentioned in the current manifest"
+  (run-esy-package '("fetch")))
 
 (defun esy ()
   "Entrypoint function to the esy-mode interactive functions

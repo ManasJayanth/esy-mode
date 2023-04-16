@@ -5,6 +5,8 @@
 ;; Author: Manas Jayanth <prometheansacrifice@gmail.com>
 ;; Created: 1 Jan 2020
 ;; Keywords: Reason, OCaml
+;; Package-Requires: ((transient "0.3.7.50") (aio "1.0"))
+;; Package-Version: 20230415
 ;; Homepage: http://example.com/foo
 ;; Package-Requires: ((emacs "25.1") (transient "0.3.6"))
 
@@ -28,6 +30,7 @@
 ;;; Code:
 (require 'json)
 (require 'transient)
+(require 'aio)
 
 ;; Customization
 (defgroup esy nil
@@ -38,10 +41,11 @@
 		   "https://github.com/prometheansacrifice/esy-mode"))
 
 (defvar esy-command "esy"
-  "The 'esy' command. Can be full path to the esy binary.")
+  "The \'esy\' command. Can be full path to the esy binary.")
 
 (defvar esy-package-command "esy-package"
-  "Command (that the default shell can resolve by itself, if full path isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
+  "Command (that the default shell can resolve by itself, if full path
+isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
 
 (defvar esy-mode-callback (lambda (&optional project-type) (message (format "%s project ready for development" project-type)))
   "The callback that can be run once an esy project is initialised.
@@ -74,7 +78,7 @@ Common use case is to enable ask lsp client to connect to the server
   (let* ((project-db-name "esy-projects.db")
 	 (project-db-path (concat "~/.emacs.d/" project-db-name))
 	 (db (condition-case
-		 err
+		 nil
 		 (esy/internal--read-obj project-db-path)
 	       (error (esy--make-hash-table))))
 	 (project-path (esy/project--get-path project)))
@@ -92,12 +96,12 @@ Common use case is to enable ask lsp client to connect to the server
     (gethash project-path db)))
 
 (defun esy/internal-status--get-manifest-file-path (esy-status)
-  "Given the json object of 'esy status' output,
+  "Given the json object of \'esy status\' output,
 it returns the manifest file"
   (gethash "rootPackageConfigPath" esy-status))
 
 (defun esy/internal-status--get-project-root (esy-status)
-  "Given the json object of 'esy status' output,
+q  "Given the json object of \'esy status\' output,
 it returns the manifest file"
   (file-name-directory (esy/internal-status--get-manifest-file-path esy-status)))
 
@@ -108,18 +112,20 @@ Returns nil, if it fails"
     (if file-name (file-name-directory file-name) nil)))
 
 (defun esy/internal--root-of-cwd (cwd)
-  "Given current working directory, get's project root using 'esy status' command"
+  "Given current working directory, get\'s project root using \'esy status\'
+command"
   (let* ((esy-status (esy/internal--esy-status cwd)))
     (esy/internal-status--get-project-root esy-status)))
 
 (defun esy/internal--cwd-of-buffer-or-default (buffer)
-  "Same as esy/internal--cwd-of-buffer, but returns default-directory if cwd of attached
-buffer could not be found"
+  "Same as esy/internal--cwd-of-buffer, but returns default-directory if cwd of
+attached buffer could not be found"
   (let ((cwd (esy/internal--cwd-of-buffer buffer)))
     (if cwd cwd default-directory)))
 
 (defun esy/internal--esy-status (cwd)
-  "Given a working directory path (default or a buffer's file directory), returns project root"
+  "Given a working directory path (default or a buffer's file directory),
+returns project root"
   (let* ((default-directory cwd)
 	 (json-str (shell-command-to-string (concat esy-command " status")))
 	 (json-array-type 'list)
@@ -268,8 +274,8 @@ that can be assigned to 'process-environment"
       penv)))
 
 (defun esy/process-env-to-exec-path (penv)
-  "Given a list of environment variables (ex: '(\"PATH=/foo/bar\" \"LDFLAGS=some_values\")'),
-gets just exec-path" 
+  "Given a list of environment variables (ex: \'(\"PATH=/foo/bar\"
+\"LDFLAGS=some_values\")\'), gets just exec-path" 
   (let* ((path-env-str-list
 	  (seq-filter (lambda (s) (string-match "^path=" s)) penv))
 	 (path-env-str-key-value (car path-env-str-list))
@@ -279,13 +285,13 @@ gets just exec-path"
 
 (defun esy/command-env--get-exec-path (command-env)
   "Given a command-env, it turns it into a list that
-can be assigned to 'exec-path"
+can be assigned to \'exec-path"
   (let* ((penv
 	  (esy/command-env--to-process-environment
 	   command-env)))
     (setq exec-path-list (esy/process-env-to-exec-path penv))))
 
-(defun esy/setup--esy-get-available-tools (project)
+(defun esy/setup--esy-get-available-tools ()
 
   "setup--esy-return-missing-tools(project): looks into the
 esy sandbox and returns a plist of missing tools. Specifically,
@@ -330,16 +336,17 @@ for development"
 		 (esy/setup--esy-get-available-tools project)))
     nil))
 
-(defun esy/setup--opam (project callback)
+(defun esy/setup--opam (project)
   (message "Detected an opam project. Experimental support.")
   (setq process-environment
 	(esy/opam--process-environment-of-project project))
   (setq exec-path (esy/process-env-to-exec-path process-environment)))
 
 
-(defun esy/setup--npm(project callback)
+(defun esy/setup--npm()
 
-  "setup--npm(project): Although named 'npm', this function uses esy to setup the Reason/OCaml toolchain.
+  "setup--npm(project): Although named \'npm\', this function uses esy to setup
+the Reason/OCaml toolchain.
 
 npm is incapable of
   a) handling prebuilts correctly
@@ -400,8 +407,8 @@ package.json or not"
 
 (defun esy/internal-package-manager--of-project (manifest-file-path)
   "Detect the package manager of the project. Returns either
-'esy|'opam|'npm. Note, manifest-file-path is expected to be either an opam file or json.
-This assumes that this value comes from `esy status`'s output"
+'esy|'opam|'npm. Note, manifest-file-path is expected to be either an opam file
+or json. This assumes that this value comes from `esy status`'s output"
   (if (esy/manifest--json-p manifest-file-path)
       ;; The manifest file is a json.
       (if (esy/manifest--package-json-p
@@ -428,7 +435,8 @@ This assumes that this value comes from `esy status`'s output"
 
 
 (defun esy-mode-init ()
-  "Initialises esy-mode with necessary config. Relies on global vars like esy-command esy-mode-callback"
+  "Initialises esy-mode with necessary config. Relies on global vars like
+esy-command esy-mode-callback"
  (make-local-variable 'process-environment)
  (make-local-variable 'exec-path)
  (if (file-exists-p esy-command)
@@ -439,7 +447,7 @@ This assumes that this value comes from `esy status`'s output"
  (not (not (executable-find "esy"))))
 
 (defun esy-project-type (&optional file-path)
-  "Returns type of project - 'esy | 'opam | 'npm"
+  "Returns type of project - \'esy | \'opam | \'npm"
   (let* ((project
 	  (if file-path (esy/project--of-file-path file-path)
 	    (esy/project--of-buffer (current-buffer)))))
@@ -452,7 +460,7 @@ This assumes that this value comes from `esy status`'s output"
     (let* ((output-buffer-name buffer-name) 
 	   (process (apply #'start-process (car cmd-and-args) output-buffer-name (car cmd-and-args) (cdr cmd-and-args)))) 
      
-      (if callback-lex (set-process-sentinel process (lambda (process sentinel-msg) (message sentinel-msg) (cond ((string= sentinel-msg "finished\n") (funcall callback-lex))))))
+      (if callback-lex (set-process-sentinel process (lambda (process sentinel-msg) (cond ((string= sentinel-msg "finished\n") (funcall callback-lex))))))
       (with-current-buffer (process-buffer process) 
 	(require 'shell) 
 	(shell-mode) 
@@ -592,16 +600,35 @@ This assumes that this value comes from `esy status`'s output"
 
 (defun esy-package--run (args)
   "Runs esy-package command in *esy-package* buffer"
+  ;; I will use some kind of async/await macro library
+  ;; here, to manage all the async code. Using `emacs-aio'
+  ;; for now. https://github.com/skeeto/emacs-aio
+  ;; See ~/notes/async-await-in-elisp.org
   (let* ((command (if args
 		     (push esy-package-command args)
-		    (list esy-package-command))))
-    (apply
-     #'start-process
-     (append
-      '("esy-package-<todo-buffer-name>" "*esy-package-<todo-buffer-name>*" )
-      command) '(:stderr "*esy-package-stderr<todo-buffer-name>*"))))
+		    (list esy-package-command)))
+	 (stdout-buffer (generate-new-buffer "*esy-package-stderr<todo-buffer-name>*"))
+	 (stderr-buffer (generate-new-buffer "*esy-package-stderr<todo-buffer-name>*"))
+	 (promise (aio-promise)))
+    (prog1 promise (make-process :name "esy-package-<todo-buffer-name>"
+				:buffer stdout-buffer
+				:command '("ls" "-l")
+				:stderr stderr-buffer
+				:sentinel (lambda (process reason-str)
+					    (pcase reason-str
+					      ("finished\n"
+					       (aio-resolve
+						promise
+						(lambda ()
+						  (list :stdout (with-current-buffer stdout-buffer (buffer-string))
+							:stderr (with-current-buffer stderr-buffer (buffer-string))))))
+					      (_  (aio-resolve promise (lambda () (list stdout "<>" stderr "<>"))))))))))
 
-(esy-package--run '("fetch"))
+
+
+(aio-defun aio-run () (aio-await (esy-package--run '("fetch"))))
+(plist-get (aio-wait-for (aio-run)) :stdout)
+
     
 
 
@@ -710,3 +737,5 @@ it returns if the project is ready for development"
 
 (provide 'esy-mode)
 ;;; esy.el ends here
+
+;;; esy-mode.el ends here

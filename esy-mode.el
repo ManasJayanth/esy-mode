@@ -101,7 +101,7 @@ it returns the manifest file"
   (gethash "rootPackageConfigPath" esy-status))
 
 (defun esy/internal-status--get-project-root (esy-status)
-q  "Given the json object of \'esy status\' output,
+  "Given the json object of \'esy status\' output,
 it returns the manifest file"
   (file-name-directory (esy/internal-status--get-manifest-file-path esy-status)))
 
@@ -336,11 +336,12 @@ for development"
 		 (esy/setup--esy-get-available-tools project)))
     nil))
 
-(defun esy/setup--opam (project)
+(defun esy/setup--opam (project callback)
   (message "Detected an opam project. Experimental support.")
   (setq process-environment
 	(esy/opam--process-environment-of-project project))
-  (setq exec-path (esy/process-env-to-exec-path process-environment)))
+  (setq exec-path (esy/process-env-to-exec-path process-environment))
+  (funcall callback '()))
 
 
 (defun esy/setup--npm()
@@ -598,7 +599,16 @@ esy-command esy-mode-callback"
       ("t" "Test"       esy-test)
     ]])
 
-(defun esy-package--run (args)
+(defun esy/internal--get-buffer-contents (buffer)
+  "Returns contents of `buffer'"
+  (with-current-buffer buffer (buffer-string)))
+
+(defun esy/internal--pp-command-list (command)
+  "Return a printable string representation of `command' which is usually,
+a list of strings"
+  (string-join command " "))
+
+(defun esy/package--run (args)
   "Runs esy-package command in *esy-package* buffer"
   ;; I will use some kind of async/await macro library
   ;; here, to manage all the async code. Using `emacs-aio'
@@ -609,37 +619,38 @@ esy-command esy-mode-callback"
 		    (list esy-package-command)))
 	 (stdout-buffer (generate-new-buffer "*esy-package-stderr<todo-buffer-name>*"))
 	 (stderr-buffer (generate-new-buffer "*esy-package-stderr<todo-buffer-name>*"))
-	 (promise (aio-promise)))
-    (prog1 promise (make-process :name "esy-package-<todo-buffer-name>"
-				:buffer stdout-buffer
-				:command '("ls" "-l")
-				:stderr stderr-buffer
-				:sentinel (lambda (process reason-str)
-					    (pcase reason-str
-					      ("finished\n"
-					       (aio-resolve
-						promise
-						(lambda ()
-						  (list :stdout (with-current-buffer stdout-buffer (buffer-string))
-							:stderr (with-current-buffer stderr-buffer (buffer-string))))))
-					      (_  (aio-resolve promise (lambda () (list stdout "<>" stderr "<>"))))))))))
+	 (promise (aio-promise))
+	 (make-std-buffers (lambda ()
+			     (list :stdout (esy/internal--get-buffer-contents stdout-buffer)
+				   :stderr (esy/internal--get-buffer-contents stderr-buffer))))
+	 (signal-process-error (lambda ()
+				 (signal
+				  'error
+				  (format
+				  "Process %s didn't exit with status finished"
+				  (esy/internal--pp-command-list command)))))
+	 (sentinel-fn (lambda (process reason-str)
+			(pcase reason-str
+			  ("finished\n" (aio-resolve promise make-std-buffers))
+			  (_  (aio-resolve promise signal-process-error))))))
+    (prog1 promise
+      (make-process :name "esy-package-<todo-buffer-name>"
+		    :buffer stdout-buffer
+		    :command command
+		    :stderr stderr-buffer
+		    :sentinel sentinel-fn))))
 
 
 
-(aio-defun aio-run () (aio-await (esy-package--run '("fetch"))))
+(aio-defun aio-run () )
 (plist-get (aio-wait-for (aio-run)) :stdout)
 
-    
+(aio-defun esy-build-shell ()
+  "Fetches package and loads the isolated build environment locally
+in the buffer. Helps in preparing patches for and preparing NPM tarballs"
+  (interactive)
+  (let* ((workable-path (aio-await (esy-package--run '("fetch")))))))
 
-
-
-  (run-cmd
-   "*esy-package*"
-   command
-   (lambda ()
-     (with-current-buffer
-	 "*esy-package*"
-       (callback))))))
 
 (defun esy-package-fetch ()
   "Entrypoint defun to fetch a package tarball mentioned in the current manifest"

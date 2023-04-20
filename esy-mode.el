@@ -32,6 +32,10 @@
 (require 'transient)
 (require 'aio)
 
+;; Errors
+(define-error 'esy-error "Internal esy-mode error occurred" 'error)
+(define-error 'file-from-source-cache-error "File provided is from esy's source cache and cannot be accepted" 'esy-error)
+
 ;; Customization
 (defgroup esy nil
   "Manage esy configuration"
@@ -105,10 +109,45 @@ it returns the manifest file"
 it returns the manifest file"
   (file-name-directory (esy/internal-status--get-manifest-file-path esy-status)))
 
+(defun esy/utils--default-if-nil (expr default-value)
+  "Returns `default-value' if `expr' is nil"
+  (if expr expr default-value))
+
+(defun esy/internal--get-prefix-path ()
+  "Return's esy's prefix path (where the store and caches can be found"
+  (esy/utils--default-if-nil (getenv "ESY__PREFIX") (expand-file-name "~/.esy")))
+
+(defun esy/utils--parent-path (path)
+  "Given a path, returns it's parent path"
+  (if (equal "/" path)
+      "/"
+    (directory-file-name (file-name-directory (directory-file-name path)))))
+
+(defun esy/internal--is-file-from-source-cache (path)
+  "Given a file path, determines if the file is from esy' source cache. It makes very
+little sense to load the esy sandbox there. This scenario is encountered when a package's
+sources are viewed. Unfortunately, this mean, not editor tooling. Perhaps, in future, a
+global toolchain could be loaded"
+  (let ((expanded-path (expand-file-name path))
+	(home (expand-file-name "~")))
+    (if (string-equal expanded-path (esy/internal--get-prefix-path))
+	t
+      (if (string-equal expanded-path home)
+	  nil
+	(esy/internal--is-file-from-source-cache (esy/utils--parent-path expanded-path))))))
+
+
+(defun esy/internal-buffer-file-name (buffer)
+  "Wrapper around Emacs' buffer-file-name to catch file names that are in esy's source cache"
+  (let ((file (buffer-file-name buffer)))
+    (if file
+	(if (esy/internal--is-file-from-source-cache file) (signal 'file-from-source-cache-error file)))
+    file))
+
 (defun esy/internal--cwd-of-buffer (buffer)
   "Given buffer, finds tries to find the cwd of the file attached to the buffer.
 Returns nil, if it fails"
-  (let* ((file-name (buffer-file-name buffer)))
+  (let* ((file-name (esy/internal-buffer-file-name buffer)))
     (if file-name (file-name-directory file-name) nil)))
 
 (defun esy/internal--root-of-cwd (cwd)
@@ -190,7 +229,7 @@ later be used to obtain more info about the esy project"
 (defun esy/project--of-buffer (buffer)
   "Returns an abstract structure that can
 later be used to obtain more info about the esy project"
-  (let* ((file-name (buffer-file-name buffer)))
+  (let* ((file-name (esy/internal-buffer-file-name buffer)))
     (if file-name
 	(esy/project--of-file-path file-name)
       (esy/project--of-path default-directory))))
@@ -710,7 +749,9 @@ it returns if the project is ready for development"
   (if esy-mode
   (progn
     (if (esy-mode-init)
-	(let* ((project (esy/cached-project--of-buffer (current-buffer))))
+	(condition-case
+	 nil
+	 (let* ((project (esy/cached-project--of-buffer (current-buffer))))
       (esy/project--persist project)
       (if (esy/project--p project)
 	  (progn
@@ -744,6 +785,7 @@ it returns if the project is ready for development"
 			(config-plist)
 			(funcall esy-mode-callback 'npm)))))))
 	(message "Doesn't look like an esy project. esy-mode will stay dormant")))
+	 (file-from-source-cache-error (message "File is from esy's source cache. Not doing anything")))
      (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))))
 
 (provide 'esy-mode)

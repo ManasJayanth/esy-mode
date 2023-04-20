@@ -312,3 +312,10 @@ project with a package.json (but no esy field in it)"
 			    (should (not (esy/project--ready-p project)))))
 		  :teardown (lambda (fixture-project-path)
 			       (delete-directory fixture-project-path t))))
+
+(ert-deftest
+    test-esy/esy/internal--is-file-from-source-cache
+    ()
+    "Tests if esy/internal--is-file-from-source-cache identifies file paths from source cache"
+    (should (not (esy/internal--is-file-from-source-cache "~/foo.c")))
+    (should (esy/internal--is-file-from-source-cache "~/.esy/source/i/esy_gmp__45eab250/foo.c")))

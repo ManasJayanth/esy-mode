@@ -537,12 +537,41 @@ esy-command esy-mode-callback"
 	(find-file (esy/cmd-api (format "%s -p %s echo #{%s.target_dir}.log" esy-command dependency dependency)))
       (message (format "Current buffer (%s) is not a part of an esy project" (buffer-name current-buffer))))))
 
+(defun esy-get-build-dir (&optional dependency cwd)
+  "Returns a dependency's build directory"
+  ;; TODO Check if project has been fetched
+  (let* ((cwd (if cwd cwd default-directory))
+	 (cmd-str (format "cd %s; %s build-plan %s" cwd esy-command (if dependency (format "-p %s" dependency) "")))
+	 (cmd-str (format "bash -c '%s'" cmd-str))
+	 (json-output (esy/cmd-api cmd-str))
+	 (json-array-type 'list)
+	 (json-key-type 'string)
+	 (json-false 'nil)
+	 (json-object-type 'hash-table))
+    (progn
+      (condition-case json-parse-error
+	  (let* ((json-hash-tbl (json-read-from-string json-output))
+		 (global-store-regexp (regexp-quote "%{globalStorePrefix}%"))
+		 (local-store-regexp (regexp-quote "%{localStore}%"))
+		 (esy-prefix (esy/internal--get-prefix-path))
+		 (esy-status (esy/internal--esy-status cwd))
+		 (project-source-root (esy/internal-status--get-project-root esy-status))
+		 (build-path (gethash "buildPath" json-hash-tbl))
+		 (local-store-path (format "%s/_esy/default/store" project-source-root)) ;; TODO: What if the esy context isn't default but from a different sandbox? Figure which manifest to use.
+		 (global-store-substituted (replace-regexp-in-string global-store-regexp esy-prefix build-path nil 'literal))
+		 (local-and-global-store-substituted (replace-regexp-in-string local-store-regexp local-store-path global-store-substituted nil 'literal)))
+	    local-and-global-store-substituted)
+	(error (progn
+		 (princ json-parse-error)
+		 (message "Failed to parse JSON output of esy-build-plan %s" json-output)
+		 nil))))))
+
 (defun esy-view-build-dir (&optional dependency)
   "Opam a dependency's (if absent, root project's) build directory"
   (interactive (list (read-string "Dependency: " nil nil (concat "@" (thing-at-point 'symbol)))))
   (let* ((project (esy/project--of-buffer (current-buffer))))
     (if (esy/project--p project)
-	(find-file (esy/cmd-api (format "%s -p %s echo #{%s.target_dir}" esy-command dependency dependency)))
+	(find-file (esy-get-build-dir dependency))
       (message (format "Current buffer (%s) is not a part of an esy project" (buffer-name current-buffer))))))
 
 (defun esy-pesy ()

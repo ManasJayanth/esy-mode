@@ -372,7 +372,7 @@ for development"
 	(if (string= system-type "windows-nt")
             (setq find-program "esy b find" grep-program "esy b grep"))
 	(funcall callback
-		 (esy/setup--esy-get-available-tools project)))
+		 (esy/setup--esy-get-available-tools)))
     nil))
 
 (defun esy/setup--opam (project callback)

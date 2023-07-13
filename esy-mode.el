@@ -148,7 +148,7 @@ be used to obtain more info about the project"
 	 (project-path (if manifest-path (file-name-directory manifest-path)
 		    (read-file-name "Couldn't detect project root. Enter project root (where opam or esy manifests are present): "  (file-name-as-directory default-directory)))))
     (list 'json esy-status-json
-	  'usable 'not-solved ;; | 'solved-not-fetched | 'fetched-not-built | 'built-and-ready
+	  ;; TODO 'usable 'not-solved | 'solved-not-fetched | 'fetched-not-built | 'built-and-ready
 	  'path project-path
 	  'type (esy/internal-package-manager--of-project manifest-path))))
 

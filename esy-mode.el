@@ -45,6 +45,11 @@
 Common use case is to enable ask lsp client to connect to the server
 (since this can only be done after the esy project is ready)")
 
+(defvar project-db-name
+  "esy-projects.db"
+  "Name of the db file where esy-mode.el persists some data. ATM, it stores projects it was used on")
+
+(defconst project-db-path (concat "~/.emacs.d/" project-db-name))
 (defun esy--make-hash-table ()
   (make-hash-table :test 'equal))
 
@@ -68,9 +73,7 @@ Common use case is to enable ask lsp client to connect to the server
 
 (defun esy/project--persist (project)
   "Persist project indexed by path"
-  (let* ((project-db-name "esy-projects.db")
-	 (project-db-path (concat "~/.emacs.d/" project-db-name))
-	 (db (condition-case
+  (let* ((db (condition-case
 		 err
 		 (esy/internal--read-obj project-db-path)
 	       (error (esy--make-hash-table))))
@@ -80,9 +83,7 @@ Common use case is to enable ask lsp client to connect to the server
 
 (defun esy/project--read-db (project-path)
     "Load a project"
-  (let* ((project-db-name "esy-projects.db")
-	 (project-db-path (concat "~/.emacs.d/" project-db-name))
-	 (db (condition-case
+  (let* ((db (condition-case
 		 err
 		 (esy/internal--read-obj project-db-path)
 	       (error (princ (format "The error was: %s" err)) (esy--make-hash-table)))))

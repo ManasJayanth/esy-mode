@@ -284,7 +284,7 @@ can be assigned to 'exec-path"
   (let* ((penv
 	  (esy/command-env--to-process-environment
 	   command-env)))
-    (setq exec-path-list (esy/process-env-to-exec-path penv))))
+    (esy/process-env-to-exec-path penv)))
 
 (defun esy/setup--esy-get-available-tools (project)
 

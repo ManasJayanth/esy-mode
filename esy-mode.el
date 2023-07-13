@@ -50,6 +50,9 @@ Common use case is to enable ask lsp client to connect to the server
   "Name of the db file where esy-mode.el persists some data. ATM, it stores projects it was used on")
 
 (defconst project-db-path (concat "~/.emacs.d/" project-db-name))
+
+(defconst esy--is-windows (eq system-type 'windows-nt))
+
 (defun esy--make-hash-table ()
   (make-hash-table :test 'equal))
 
@@ -273,7 +276,7 @@ gets just exec-path"
 	 (path-env-str-key-value (car path-env-str-list))
 	 (path-env-str (nth 1 (split-string path-env-str-key-value "="))))
     (split-string path-env-str
-     (if (string= system-type "windows-nt") ";" ":"))))
+     (if esy--is-windows ";" ":"))))
 
 (defun esy/command-env--get-exec-path (command-env)
   "Given a command-env, it turns it into a list that

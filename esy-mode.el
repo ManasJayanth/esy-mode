@@ -395,6 +395,11 @@ json or not"
 package.json or not"
   (if file-path (string-match "package\.json$" file-path) nil))
 
+(defun esy/manifest--esy-json-p (file-path)
+  "Takes a file path and returns if file at said path is
+esy.json or not"
+  (if file-path (string-match "esy\.json$" file-path) nil))
+
 (defun esy/manifest--contains-esy-field-p (manifest)
   "Checks if a manifest structure contains esy field"
   (if manifest (gethash "esy" manifest) nil))
@@ -405,6 +410,9 @@ package.json or not"
 This assumes that this value comes from `esy status`'s output"
   (if (esy/manifest--json-p manifest-file-path)
       ;; The manifest file is a json.
+      (if (esy/manifest--esy-json-p
+	   manifest-file-path)
+	  'esy
       (if (esy/manifest--package-json-p
 	   manifest-file-path)
 	  ;; Could be npm or esy
@@ -424,7 +432,7 @@ This assumes that this value comes from `esy status`'s output"
 	(if (esy/manifest--contains-esy-field-p
 	     (esy/manifest--of-path manifest-file-path))
 	    'esy
-	  nil))
+	  nil)))
     'opam))
 
 

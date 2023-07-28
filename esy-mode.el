@@ -49,6 +49,10 @@ Common use case is to enable ask lsp client to connect to the server
   "esy-projects.db"
   "Name of the db file where esy-mode.el persists some data. ATM, it stores projects it was used on")
 
+(defvar esy-disable-esy-mode-cache
+  t
+  "Controls if esy-mode.el should cache user answers and project information")
+
 (defconst project-db-path (concat "~/.emacs.d/" project-db-name))
 
 (defconst esy--is-windows (eq system-type 'windows-nt))
@@ -126,13 +130,14 @@ buffer could not be found"
 	 (json-array-type 'list)
 	 (json-key-type 'string)
 	 (json-false 'nil)
-	 (json-object-type 'hash-table))
-    (condition-case nil
-	(json-read-from-string json-str)
-      (error (progn
-	       (message (format "Error while json parsing \
-'esy status' -> %s" json-str))
-	       (esy--make-hash-table))))))
+	 (json-object-type 'hash-table)
+	 (esy-status
+	  (condition-case nil
+	      (json-read-from-string json-str)
+	    (error (progn (message
+			   (format "Error while json parsing 'esy status' -> %s" json-str))
+			  (esy--make-hash-table))))))
+    esy-status))
 
 (defun esy/internal--esy-status-of-buffer (buffer)
   "Returns 'esy status' output for a project associated with the given buffer"
@@ -194,7 +199,8 @@ later be used to obtain more info about the esy project"
   "Looks up the project db first, then call esy/project--of-buffer if necessary"
   (let* ((project-root (esy/internal--root-of-cwd (esy/internal--cwd-of-buffer buffer)))
 	(cached-project (esy/project--read-db project-root)))
-    (if cached-project cached-project (esy/project--of-buffer buffer))))
+    (if (and (not esy-disable-esy-mode-cache) cached-project)
+	cached-project (esy/project--of-buffer buffer))))
 
 (defun esy/project--fetched-p (project)
   "Returns if a given project's sources have been solved and fetched. This
@@ -304,32 +310,36 @@ it looks for
       (setq tools (plist-put tools 'lsp (executable-find "ocamllsp")))
   ))
 
+(defun esy/setup--esy-setup-buffer-environment (project callback)
+  "Helper to esy/setup--esy to setup buffer local environment"
+  (if (esy/project--ready-p project)
+      (progn
+	(let* ((command-env (esy/command-env--of-project project)))
+	  (setq process-environment
+		(esy/command-env--to-process-environment command-env))
+	  (setq exec-path
+		(esy/command-env--get-exec-path command-env)))
+	(if esy--is-windows
+            (setq find-program "esy b find" grep-program "esy b grep"))
+	(funcall callback
+		 (esy/setup--esy-get-available-tools project)))
+  (message "Project not ready for development! Please run esy")))
+
 (defun esy/setup--esy (project callback)
   "setup--esy(project): runs ops to ensure project is ready
 for development"
   (if (esy/project--fetched-p project)
-      (let* ((command-env (esy/command-env--of-project project)))
-	  (setq process-environment
-	    (esy/command-env--to-process-environment
-	     command-env))
-	  (setq exec-path
-		(esy/command-env--get-exec-path command-env)))
+      (esy/setup--esy-setup-buffer-environment project callback)
     (if (y-or-n-p
 	 "This project hasn't had it's dependencies fetched and built. Go ahead and do this first?")
 	(run-esy
 	 (list "i")
 	 (lambda ()
 	   (message "Project dependencies have been fetched. Building sandbox in the background")
+	   (esy/setup--esy-setup-buffer-environment project callback)
 	   (run-esy
 	    (list "build-dependencies")
-	    (lambda () (message "Project sandbox built!")))))))
-  (if (esy/project--ready-p project)
-      (progn
-	(if (string= system-type "windows-nt")
-            (setq find-program "esy b find" grep-program "esy b grep"))
-	(funcall callback
-		 (esy/setup--esy-get-available-tools project)))
-    nil))
+	    (lambda () (message "Project sandbox built!"))))))))
 
 (defun esy/setup--opam (project callback)
   (message "Detected an opam project. Experimental support.")
@@ -622,7 +632,7 @@ First checks if file backing the current buffer is a part of an esy project, the
        (setq
 	compilation-directory-matcher
 	'("^\s+\\(# esy-build-package: pwd: \\| esy-build-package: exiting with errors above\\)\\([^\n]+\\)$" (2 . nil)))
-       (callback))))))
+       (funcall callback))))))
 
 (defun esy-init (project-directory)
   "Run esy"

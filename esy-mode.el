@@ -236,9 +236,10 @@ later be used to obtain more info about the esy project"
 
 (defun esy/cached-project--of-buffer (buffer)
   "Looks up the project db first, then call esy/project--of-buffer if necessary"
-  (let* ((project-root (esy/internal--root-of-cwd (esy/internal--cwd-of-buffer buffer)))
-	(cached-project (esy/project--read-db project-root)))
-    (if cached-project cached-project (esy/project--of-buffer buffer))))
+  (let* ((project-root (esy/internal--root-of-cwd (esy/internal--cwd-of-buffer buffer))))
+    (if project-root
+	(let* ((cached-project (esy/project--read-db project-root)))
+	  (if cached-project cached-project (esy/project--of-buffer buffer))))))
 
 (defun esy/project--fetched-p (project)
   "Returns if a given project's sources have been solved and fetched. This
@@ -780,8 +781,11 @@ it returns if the project is ready for development"
     (if (esy-mode-init)
 	(condition-case
 	 nil
-	 (let* ((project (esy/cached-project--of-buffer (current-buffer))))
-      (esy/project--persist project)
+	    (let* ((cached-project (esy/cached-project--of-buffer (current-buffer)))
+		   (project (if cached-project cached-project (esy/project--of-buffer (current-buffer)))))
+
+	      (if project (esy/project--persist project))
+
       (if (esy/project--p project)
 	  (progn
 	    

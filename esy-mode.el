@@ -148,7 +148,7 @@ global toolchain could be loaded"
   "Given buffer, finds tries to find the cwd of the file attached to the buffer.
 Returns nil, if it fails"
   (let* ((file-name (esy/internal-buffer-file-name buffer)))
-    (if file-name (file-name-directory file-name) nil)))
+    (if file-name (file-name-directory file-name) default-directory)))
 
 (defun esy/internal--root-of-cwd (cwd)
   "Given current working directory, get\'s project root using \'esy status\'

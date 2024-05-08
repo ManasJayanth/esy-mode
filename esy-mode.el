@@ -317,7 +317,7 @@ that can be assigned to 'process-environment"
   "Given a list of environment variables (ex: \'(\"PATH=/foo/bar\"
 \"LDFLAGS=some_values\")\'), gets just exec-path" 
   (let* ((path-env-str-list
-	  (seq-filter (lambda (s) (string-match "^path=" s)) penv))
+	  (seq-filter (lambda (s) (string-match "^PATH=" s)) penv))
 	 (path-env-str-key-value (car path-env-str-list))
 	 (path-env-str (nth 1 (split-string path-env-str-key-value "="))))
     (split-string path-env-str

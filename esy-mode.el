@@ -354,6 +354,7 @@ it looks for
 for development"
   (if (esy/project--fetched-p project)
       (let* ((command-env (esy/command-env--of-project project)))
+	(message "setting process-environment")
 	  (setq process-environment
 	    (esy/command-env--to-process-environment
 	     command-env))

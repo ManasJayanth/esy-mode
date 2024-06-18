@@ -56,6 +56,18 @@ isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
 Common use case is to enable ask lsp client to connect to the server
 (since this can only be done after the esy project is ready)")
 
+(defvar project-db-name
+  "esy-projects.db"
+  "Name of the db file where esy-mode.el persists some data. ATM, it stores projects it was used on")
+
+(defvar esy-disable-esy-mode-cache
+  t
+  "Controls if esy-mode.el should cache user answers and project information")
+
+(defconst project-db-path (concat "~/.emacs.d/" project-db-name))
+
+(defconst esy--is-windows (eq system-type 'windows-nt))
+
 (defun esy--make-hash-table ()
   (make-hash-table :test 'equal))
 
@@ -79,10 +91,8 @@ Common use case is to enable ask lsp client to connect to the server
 
 (defun esy/project--persist (project)
   "Persist project indexed by path"
-  (let* ((project-db-name "esy-projects.db")
-	 (project-db-path (concat "~/.emacs.d/" project-db-name))
-	 (db (condition-case
-		 nil
+  (let* ((db (condition-case
+		 err
 		 (esy/internal--read-obj project-db-path)
 	       (error (esy--make-hash-table))))
 	 (project-path (esy/project--get-path project)))
@@ -91,9 +101,7 @@ Common use case is to enable ask lsp client to connect to the server
 
 (defun esy/project--read-db (project-path)
     "Load a project"
-  (let* ((project-db-name "esy-projects.db")
-	 (project-db-path (concat "~/.emacs.d/" project-db-name))
-	 (db (condition-case
+  (let* ((db (condition-case
 		 err
 		 (esy/internal--read-obj project-db-path)
 	       (error (princ (format "The error was: %s" err)) (esy--make-hash-table)))))
@@ -170,13 +178,14 @@ returns project root"
 	 (json-array-type 'list)
 	 (json-key-type 'string)
 	 (json-false 'nil)
-	 (json-object-type 'hash-table))
-    (condition-case nil
-	(json-read-from-string json-str)
-      (error (progn
-	       (message (format "Error while json parsing \
-'esy status' -> %s" json-str))
-	       (esy--make-hash-table))))))
+	 (json-object-type 'hash-table)
+	 (esy-status
+	  (condition-case nil
+	      (json-read-from-string json-str)
+	    (error (progn (message
+			   (format "Error while json parsing 'esy status' -> %s" json-str))
+			  (esy--make-hash-table))))))
+    esy-status))
 
 (defun esy/internal--esy-status-of-buffer (buffer)
   "Returns 'esy status' output for a project associated with the given buffer"
@@ -192,7 +201,7 @@ be used to obtain more info about the project"
 	 (project-path (if manifest-path (file-name-directory manifest-path)
 		    (read-file-name "Couldn't detect project root. Enter project root (where opam or esy manifests are present): "  (file-name-as-directory default-directory)))))
     (list 'json esy-status-json
-	  'usable 'not-solved ;; | 'solved-not-fetched | 'fetched-not-built | 'built-and-ready
+	  ;; TODO 'usable 'not-solved | 'solved-not-fetched | 'fetched-not-built | 'built-and-ready
 	  'path project-path
 	  'type (esy/internal-package-manager--of-project manifest-path))))
 
@@ -238,7 +247,8 @@ later be used to obtain more info about the esy project"
   "Looks up the project db first, then call esy/project--of-buffer if necessary"
   (let* ((project-root (esy/internal--root-of-cwd (esy/internal--cwd-of-buffer buffer)))
 	(cached-project (esy/project--read-db project-root)))
-    (if cached-project cached-project (esy/project--of-buffer buffer))))
+    (if (and (not esy-disable-esy-mode-cache) cached-project)
+	cached-project (esy/project--of-buffer buffer))))
 
 (defun esy/project--fetched-p (project)
   "Returns if a given project's sources have been solved and fetched. This
@@ -320,7 +330,7 @@ that can be assigned to 'process-environment"
 	 (path-env-str-key-value (car path-env-str-list))
 	 (path-env-str (nth 1 (split-string path-env-str-key-value "="))))
     (split-string path-env-str
-     (if (string= system-type "windows-nt") ";" ":"))))
+     (if esy--is-windows ";" ":"))))
 
 (defun esy/command-env--get-exec-path (command-env)
   "Given a command-env, it turns it into a list that
@@ -328,7 +338,7 @@ can be assigned to \'exec-path"
   (let* ((penv
 	  (esy/command-env--to-process-environment
 	   command-env)))
-    (setq exec-path-list (esy/process-env-to-exec-path penv))))
+    (esy/process-env-to-exec-path penv)))
 
 (defun esy/setup--esy-get-available-tools ()
 
@@ -348,24 +358,36 @@ it looks for
       (setq tools (plist-put tools 'lsp (executable-find "ocamllsp")))
   ))
 
+(defun esy/setup--esy-setup-buffer-environment (project callback)
+  "Helper to esy/setup--esy to setup buffer local environment"
+  (if (esy/project--ready-p project)
+      (progn
+	(let* ((command-env (esy/command-env--of-project project)))
+	  (setq process-environment
+		(esy/command-env--to-process-environment command-env))
+	  (setq exec-path
+		(esy/command-env--get-exec-path command-env)))
+	(if esy--is-windows
+            (setq find-program "esy b find" grep-program "esy b grep"))
+	(funcall callback
+		 (esy/setup--esy-get-available-tools project)))
+  (message "Project not ready for development! Please run esy")))
+
 (defun esy/setup--esy (project callback)
   "setup--esy(project): runs ops to ensure project is ready
 for development"
   (if (esy/project--fetched-p project)
-      (let* ((command-env (esy/command-env--of-project project)))
-	  (setq process-environment
-	    (esy/command-env--to-process-environment
-	     command-env))
-	  (setq exec-path
-		(esy/command-env--get-exec-path command-env)))
+      (esy/setup--esy-setup-buffer-environment project callback)
     (if (y-or-n-p
 	 "This project hasn't had it's dependencies fetched and built. Go ahead and do this first?")
 	(run-esy
 	 (list "i")
 	 (lambda ()
 	   (message "Project dependencies have been fetched. Building sandbox in the background")
+	   (esy/setup--esy-setup-buffer-environment project callback)
 	   (run-esy
 	    (list "build-dependencies")
+
 	    (lambda () (message "Project sandbox built!")))))))
   (if (esy/project--ready-p project)
       (progn
@@ -441,6 +463,11 @@ json or not"
 package.json or not"
   (if file-path (string-match "package\.json$" file-path) nil))
 
+(defun esy/manifest--esy-json-p (file-path)
+  "Takes a file path and returns if file at said path is
+esy.json or not"
+  (if file-path (string-match "esy\.json$" file-path) nil))
+
 (defun esy/manifest--contains-esy-field-p (manifest)
   "Checks if a manifest structure contains esy field"
   (if manifest (gethash "esy" manifest) nil))
@@ -451,6 +478,9 @@ package.json or not"
 or json. This assumes that this value comes from `esy status`'s output"
   (if (esy/manifest--json-p manifest-file-path)
       ;; The manifest file is a json.
+      (if (esy/manifest--esy-json-p
+	   manifest-file-path)
+	  'esy
       (if (esy/manifest--package-json-p
 	   manifest-file-path)
 	  ;; Could be npm or esy
@@ -470,7 +500,7 @@ or json. This assumes that this value comes from `esy status`'s output"
 	(if (esy/manifest--contains-esy-field-p
 	     (esy/manifest--of-path manifest-file-path))
 	    'esy
-	  nil))
+	  nil)))
     'opam))
 
 
@@ -747,7 +777,7 @@ First checks if file backing the current buffer is a part of an esy project, the
        (setq
 	compilation-directory-matcher
 	'("^\s+\\(# esy-build-package: pwd: \\| esy-build-package: exiting with errors above\\)\\([^\n]+\\)$" (2 . nil)))
-       (callback))))))
+       (funcall callback))))))
 
 (defun esy-init (project-directory)
   "Run esy"

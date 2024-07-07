@@ -371,7 +371,7 @@ it looks for
 	(if esy--is-windows
             (setq find-program "esy b find" grep-program "esy b grep"))
 	(funcall callback
-		 (esy/setup--esy-get-available-tools project)))
+		 (esy/setup--esy-get-available-tools)))
   (message "Project not ready for development! Please run esy")))
 
 (defun esy/setup--esy (project callback)

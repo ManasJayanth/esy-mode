@@ -406,7 +406,7 @@ for development"
   (funcall callback '()))
 
 
-(defun esy/setup--npm()
+(defun esy/setup--npm(project callback)
 
   "setup--npm(project): Although named \'npm\', this function uses esy to setup
 the Reason/OCaml toolchain.

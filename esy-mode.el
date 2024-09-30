@@ -372,31 +372,15 @@ it looks for
             (setq find-program "esy b find" grep-program "esy b grep"))
 	(funcall callback
 		 (esy/setup--esy-get-available-tools)))
-  (message "Project not ready for development! Please run esy")))
+    (message "Project not ready for development! Please run esy")
+    (funcall callback '())))
 
 (defun esy/setup--esy (project callback)
   "setup--esy(project): runs ops to ensure project is ready
 for development"
   (if (esy/project--fetched-p project)
       (esy/setup--esy-setup-buffer-environment project callback)
-    (if (y-or-n-p
-	 "This project hasn't had it's dependencies fetched and built. Go ahead and do this first?")
-	(run-esy
-	 (list "i")
-	 (lambda ()
-	   (message "Project dependencies have been fetched. Building sandbox in the background")
-	   (esy/setup--esy-setup-buffer-environment project callback)
-	   (run-esy
-	    (list "build-dependencies")
-
-	    (lambda () (message "Project sandbox built!")))))))
-  (if (esy/project--ready-p project)
-      (progn
-	(if (string= system-type "windows-nt")
-            (setq find-program "esy b find" grep-program "esy b grep"))
-	(funcall callback
-		 (esy/setup--esy-get-available-tools)))
-    nil))
+    (message "This project hasn't had it's dependencies fetched and built. Consider running esy")))
 
 (defun esy/setup--opam (project callback)
   (message "Detected an opam project. Experimental support.")
@@ -541,11 +525,8 @@ esy-command esy-mode-callback"
 (defun run-cmd (buffer-name cmd-and-args callback)
   (let ((compilation-buffer
 		 (compilation-start (string-join cmd-and-args " ") 'compilation-mode)))
-    (if (get-buffer "*esy*") nil (with-current-buffer compilation-buffer (rename-buffer buffer-name)))
-    (add-hook
-     'compilation-finish-functions
-      (lambda (buf str)
-	(funcall callback)))))
+    (if (get-buffer "*esy*") nil (with-current-buffer compilation-buffer (rename-buffer buffer-name)))))
+
 
 (defun esy/cmd-api (cmd-string)
   "Util to work with esy's CLI API"
@@ -777,8 +758,8 @@ First checks if file backing the current buffer is a part of an esy project, the
        ; (make-local-variable 'compilation-directory-matcher) ; Buffer local not working :(
        (setq
 	compilation-directory-matcher
-	'("^\s+\\(# esy-build-package: pwd: \\| esy-build-package: exiting with errors above\\)\\([^\n]+\\)$" (2 . nil)))
-       (funcall callback))))))
+	'("^\s+\\(# esy-build-package: pwd: \\| esy-build-package: exiting with errors above\\)\\([^\n]+\\)$" (2 . nil))))))))
+
 
 (defun esy-init (project-directory)
   "Run esy"

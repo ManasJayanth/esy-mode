@@ -112,9 +112,18 @@ global toolchain could be loaded"
 	(home (expand-file-name "~")))
     (if (string-equal expanded-path (esy/internal--get-prefix-path))
 	t
-      (if (string-equal expanded-path home)
-	  nil
-	(esy/internal--is-file-from-source-cache (esy/utils--parent-path expanded-path))))))
+      ;; We used to compare if expanded-path is equal to home to figure if we
+      ;; could stop traversing up
+      ;;
+      ;; (if (string-equal expanded-path home) ...)
+      ;;
+      ;; On WSL, however, this doesn't work because it still evaluates to Windows
+      ;; native paths - eg, C:/Users/johndoe
+      ;;
+      ;; In any case, the popular way to stop traversal is to stop when (directory-file-name ...)
+      ;; returns the same as it's input - ie when it has reached the root of the file system
+      (let ((parent-path (esy/utils--parent-path expanded-path)))
+	(if (string= parent-path path) nil (esy/internal--is-file-from-source-cache parent-path))))))
 
 
 (defun esy/internal-buffer-file-name (buffer)

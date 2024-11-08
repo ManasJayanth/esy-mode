@@ -719,6 +719,13 @@ First checks if file backing the current buffer is a part of an esy project, the
       (if (y-or-n-p "You are not in an esy project, would you like to initialize one? ")
           (call-interactively #'esy-init)))))
 
+(defun esy-project-is-ready?
+    (file-path)
+  "Given the path of a file in the project,
+it returns if the project is ready for development"
+  (let* ((project (esy/project--of-file-path file-path)))
+    (esy/project--ready-p project)))
+
 (defun run-esy (args callback)
   "Runs esy command in *esy* buffer"
   (let ((command (if args (push esy-command args) (list esy-command))))
@@ -743,13 +750,6 @@ First checks if file backing the current buffer is a part of an esy project, the
   "Cleanup dune's build directory"
   (interactive)
   (run-esy (list "b" "dune" "clean") (lambda () (message "[esy] Finished"))))
-
-(defun esy-project-is-ready?
-    (file-path)
-  "Given the path of a file in the project,
-it returns if the project is ready for development"
-  (let* ((project (esy/project--of-file-path file-path)))
-    (esy/project--ready-p project)))
 
 (defun esy-build-dependencies (project-directory)
   "Run esy build-dependencies"

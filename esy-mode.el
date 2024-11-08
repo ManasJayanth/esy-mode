@@ -746,16 +746,6 @@ it returns if the project is ready for development"
   (interactive "sProject Directory: ")
   (run-cmd (list "pesy" "-d" project-directory) (lambda () (message "[esy] Finished"))))
 
-(defun esy-dune-clean ()
-  "Cleanup dune's build directory"
-  (interactive)
-  (run-esy (list "b" "dune" "clean") (lambda () (message "[esy] Finished"))))
-
-(defun esy-build-dependencies (project-directory)
-  "Run esy build-dependencies"
-  (interactive)
-  (run-esy (list "build-dependencies") (lambda () (message "[esy] Finished"))))
-
 ;;;###autoload
 (define-minor-mode esy-mode
   "Minor mode for esy - the package manager for Reason/OCaml"

@@ -146,7 +146,7 @@ attached buffer could not be found"
   "Given a working directory path (default or a buffer's file directory),
 returns project root"
   (let* ((default-directory cwd)
-	 (json-str (shell-command-to-string (concat esy-command " status")))
+	 (json-str (esy/cmd-api (format "%s status" esy-command)))
 	 (json-array-type 'list)
 	 (json-key-type 'string)
 	 (json-false 'nil)
@@ -239,8 +239,7 @@ command-env"
        (json-str
 	(condition-case
 	    err
-	    (shell-command-to-string
-	     (concat esy-command " command-env --json"))
+	    (esy/cmd-api (format "%s command-env --json" esy-command))
 	  (error (progn
 		   (debug err)
 		   (message "Error while running 'esy command-env --json' %s" (error-message-string err))

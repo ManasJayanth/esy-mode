@@ -583,13 +583,13 @@ esy-command esy-mode-callback"
 
 (defun esy/cmd-install (&optional args)
   "Run esy install"
-  (interactive (list (esy-install-menu-arguments)))
+  (interactive (list (transient-args 'esy-install)))
   (print args)
   (run-esy (append '("install") args) (lambda () (message "[esy] Installed"))))
 
 (defun esy/cmd-build ()
   "Run esy build"
-  (interactive)
+  (interactive (list (transient-args 'esy-build)))
   (run-esy (list "build") (lambda () (message "[esy] Built"))))
 
 (defun esy-add (dependency &optional dev-only)
@@ -627,7 +627,7 @@ esy-command esy-mode-callback"
      ("-v" " OCaml compiler version"        "--ocaml-version")
     ]
     [["Command"
-      ("b" "Build"       esy-build)]])
+      ("b" "Build"       esy/cmd-build)]])
 
 
 (defun esy-test ()

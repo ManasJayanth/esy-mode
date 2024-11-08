@@ -5,11 +5,9 @@
 ;; Author: Manas Jayanth <prometheansacrifice@gmail.com>
 ;; Created: 1 Jan 2020
 ;; Keywords: Reason, OCaml
-;; Package-Requires: ((transient "0.3.7.50") (aio "1.0"))
+;; Package-Requires: ((emacs "25.1") (transient "0.3.7.50") (aio "1.0"))
 ;; Package-Version: 20230415
 ;; Homepage: http://example.com/foo
-;; Package-Requires: ((emacs "25.1") (transient "0.3.6"))
-
 
 ;;; Commentary:
 
@@ -80,32 +78,6 @@ Common use case is to enable ask lsp client to connect to the server
 (defun esy/f--write (fname data)
   "Write to file"
   (with-temp-file fname (insert data)))
-
-(defun esy/internal--persist-obj (obj file-path)
-  "Persists object to file"
-  (esy/f--write file-path (prin1-to-string obj)))
-
-(defun esy/internal--read-obj (file-path)
-  "Reads object from file"
-  (eval (car (read-from-string (esy/f--read file-path)))))
-
-(defun esy/project--persist (project)
-  "Persist project indexed by path"
-  (let* ((db (condition-case
-		 err
-		 (esy/internal--read-obj project-db-path)
-	       (error (esy--make-hash-table))))
-	 (project-path (esy/project--get-path project)))
-    (puthash project-path project db)
-    (esy/internal--persist-obj db project-db-path)))
-
-(defun esy/project--read-db (project-path)
-    "Load a project"
-  (let* ((db (condition-case
-		 err
-		 (esy/internal--read-obj project-db-path)
-	       (error (princ (format "The error was: %s" err)) (esy--make-hash-table)))))
-    (gethash project-path db)))
 
 (defun esy/internal-status--get-manifest-file-path (esy-status)
   "Given the json object of \'esy status\' output,
@@ -242,13 +214,6 @@ later be used to obtain more info about the esy project"
     (if file-name
 	(esy/project--of-file-path file-name)
       (esy/project--of-path default-directory))))
-
-(defun esy/cached-project--of-buffer (buffer)
-  "Looks up the project db first, then call esy/project--of-buffer if necessary"
-  (let* ((project-root (esy/internal--root-of-cwd (esy/internal--cwd-of-buffer buffer)))
-	(cached-project (esy/project--read-db project-root)))
-    (if (and (not esy-disable-esy-mode-cache) cached-project)
-	cached-project (esy/project--of-buffer buffer))))
 
 (defun esy/project--fetched-p (project)
   "Returns if a given project's sources have been solved and fetched. This
@@ -789,15 +754,13 @@ it returns if the project is ready for development"
   :lighter " esy"
   (if esy-mode
   (progn
-    (if (esy-mode-init)
+    (if
+      (esy-mode-init)
 	(condition-case
-	 nil
-	    (let* ((cached-project (esy/cached-project--of-buffer (current-buffer)))
-		   (project (if cached-project cached-project (esy/project--of-buffer (current-buffer)))))
+	    nil
+	    (let* ((project (esy/project--of-buffer (current-buffer))))
 
-	      (if project (esy/project--persist project))
-
-      (if (esy/project--p project)
+	      (if (esy/project--p project)
 	  (progn
 	    
 	    ;; All npm and opam projects are valid esy projects

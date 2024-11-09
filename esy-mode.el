@@ -30,6 +30,10 @@
 (require 'transient)
 (require 'aio)
 
+
+;; esy libraries
+(require 'esy-utils)
+
 ;; Errors
 (define-error 'esy-error "Internal esy-mode error occurred" 'error)
 (define-error 'file-from-source-cache-error "File provided is from esy's source cache and cannot be accepted" 'esy-error)
@@ -61,21 +65,6 @@ Common use case is to enable ask lsp client to connect to the server
 (defvar esy-disable-esy-mode-cache
   t
   "Controls if esy-mode.el should cache user answers and project information")
-
-(defconst esy--is-windows (eq system-type 'windows-nt))
-
-(defun esy--make-hash-table ()
-  (make-hash-table :test 'equal))
-
-(defun esy/f--read (file-path)
-  "Return file content."
-  (with-temp-buffer
-    (insert-file-contents file-path)
-    (buffer-string)))
-
-(defun esy/f--write (fname data)
-  "Write to file"
-  (with-temp-file fname (insert data)))
 
 (defun esy/internal-status--get-manifest-file-path (esy-status)
   "Given the json object of \'esy status\' output,
@@ -163,7 +152,7 @@ returns project root"
 	      (json-read-from-string json-str)
 	    (error (progn (message
 			   (format "Error while json parsing 'esy status' -> %s" json-str))
-			  (esy--make-hash-table))))))
+			  (make-hash-table :test 'equal))))))
     esy-status))
 
 (defun esy/internal--esy-status-of-buffer (buffer)
@@ -301,7 +290,7 @@ that can be assigned to 'process-environment"
 	 (path-env-str-key-value (car path-env-str-list))
 	 (path-env-str (nth 1 (split-string path-env-str-key-value "="))))
     (split-string path-env-str
-     (if esy--is-windows ";" ":"))))
+     (if esy/utils--windows? ";" ":"))))
 
 (defun esy/command-env--get-exec-path (command-env)
   "Given a command-env, it turns it into a list that
@@ -339,7 +328,7 @@ it looks for
 		(esy/command-env--to-process-environment command-env))
 	  (setq exec-path
 		(esy/command-env--get-exec-path command-env)))
-	(if esy--is-windows
+	(if esy/utils--windows?
             (setq find-program "esy b find" grep-program "esy b grep"))
 	(funcall callback
 		 (esy/setup--esy-get-available-tools)))

@@ -62,8 +62,6 @@ Common use case is to enable ask lsp client to connect to the server
   t
   "Controls if esy-mode.el should cache user answers and project information")
 
-(defconst project-db-path (concat "~/.emacs.d/" project-db-name))
-
 (defconst esy--is-windows (eq system-type 'windows-nt))
 
 (defun esy--make-hash-table ()

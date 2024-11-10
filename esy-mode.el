@@ -36,7 +36,7 @@
 
 ;; Errors
 (define-error 'esy-error "Internal esy-mode error occurred" 'error)
-(define-error 'file-from-source-cache-error "File provided is from esy's source cache and cannot be accepted" 'esy-error)
+(define-error 'esy-file-from-source-cache-error "File provided is from esy's source cache and cannot be accepted" 'esy-error)
 
 ;; Customization
 (defgroup esy nil
@@ -117,7 +117,7 @@ global toolchain could be loaded"
   "Wrapper around Emacs' buffer-file-name to catch file names that are in esy's source cache"
   (let ((file (buffer-file-name buffer)))
     (if file
-	(if (esy/internal--is-file-from-source-cache file) (signal 'file-from-source-cache-error file)))
+	(if (esy/internal--is-file-from-source-cache file) (signal 'esy-file-from-source-cache-error file)))
     file))
 
 (defun esy/internal--cwd-of-buffer (buffer)
@@ -729,7 +729,7 @@ it returns if the project is ready for development"
 			(config-plist)
 			(funcall esy-mode-callback 'npm)))))))
 	(message "Doesn't look like an esy project. esy-mode will stay dormant")))
-	 (file-from-source-cache-error (message "File is from esy's source cache. Not doing anything")))
+	 (esy-file-from-source-cache-error (message "File is from esy's source cache. Not doing anything")))
      (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))))
 
 (provide 'esy-mode)

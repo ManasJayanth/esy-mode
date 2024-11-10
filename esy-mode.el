@@ -18,10 +18,22 @@
 ;; project it need not be available).
 
 
-;; TIP: To test individual defuns, consider the following example;
+;; TIP: To test individual defuns, consider the following examples
+;;
+;; To create esy/project type,
+;;
+;;   (esy/project--of-path "C:/Users/foo/development/esy/esy")
+;;
+;; To get manifest file path,
+;;
+;;   (esy/project--get-manifest-file-path (esy/project--of-path "C:/Users/foo/development/esy/esy"))
+;;
+;; To get buffer local 'exec-path for an esy project,
+;; 
 ;; (esy/process-env-to-exec-path
 ;;   (esy/opam--process-environment-of-project
-;;     (esy/project--of-path "/Users/manas/development/ligolang/ligo")))
+;;     (esy/project--of-path "C:/Users/foo/development/esy/esy")))
+
 
 ;;; Change Log: TODO
 

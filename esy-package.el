@@ -1,4 +1,4 @@
-;;; esy-package.el --- library to interact with esy-package CLI -*- lexical-binding: t; -*-
+;;; esy-package.el --- library to interact with esy-package CLI. -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2024 Manas Jayanth
 
@@ -14,6 +14,21 @@
 ;;; Change Log: TODO
 
 ;;; Code:
+(require 'aio)
+;; Tips
+;; Taken from https://github.com/skeeto/emacs-aio/issues/19#issuecomment-729323058
+;; (aio-defun foo-aio-call-process (program buffer &rest args)
+;;   (let ((process (apply #'start-process program buffer program args))
+;;         (promise (aio-promise)))
+;;     (prog1 promise
+;;       (setf (process-sentinel process)
+;;             (lambda (_ status) (aio-resolve promise (lambda () 9999)))))))
+;; (aio-wait-for (foo-aio-call-process "esy" "*foo*" "status"))
+
+(defvar esy-package-command "esy-package"
+  "Command (that the default shell can resolve by itself, if full path
+isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
+
 (aio-defun esy/package--run (args)
   "Runs esy-package command in *esy-package* buffer"
   ;; I will use some kind of async/await macro library

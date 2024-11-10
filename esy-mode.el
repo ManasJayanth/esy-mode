@@ -5,7 +5,7 @@
 ;; Author: Manas Jayanth <prometheansacrifice@gmail.com>
 ;; Created: 1 Jan 2020
 ;; Keywords: Reason, OCaml
-;; Package-Requires: ((emacs "25.1") (transient "0.3.7.50") (aio "1.0"))
+;; Package-Requires: ((emacs "25.1") (transient "0.3.7.50"))
 ;; Package-Version: 20230415
 ;; Homepage: http://example.com/foo
 
@@ -40,7 +40,6 @@
 ;;; Code:
 (require 'json)
 (require 'transient)
-(require 'aio)
 
 
 ;; esy libraries
@@ -60,10 +59,6 @@
 
 (defvar esy-command "esy"
   "The \'esy\' command. Can be full path to the esy binary.")
-
-(defvar esy-package-command "esy-package"
-  "Command (that the default shell can resolve by itself, if full path
-isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
 
 (defvar esy-mode-callback (lambda (&optional project-type) (message (format "%s project ready for development" project-type)))
   "The callback that can be run once an esy project is initialised.

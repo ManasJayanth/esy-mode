@@ -37,15 +37,4 @@
   ;; (file-truename path)
   ;;
 
-;; aio utils
-;; taken from https://github.com/skeeto/emacs-aio/issues/19#issuecomment-729323058
-(aio-defun foo-aio-call-process (program buffer &rest args)
-  (let ((process (apply #'start-process program buffer program args))
-        (promise (aio-promise)))
-    (prog1 promise
-      (setf (process-sentinel process)
-            (lambda (_ status) (aio-resolve promise (lambda () 9999)))))))
-
-(aio-wait-for (foo-aio-call-process "esy" "*foo*" "status"))
-
 (provide 'esy-utils)

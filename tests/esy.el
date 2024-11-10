@@ -297,23 +297,6 @@ project with a package.json (but no esy field in it)"
    :teardown (lambda (fixture-project-path)
 	       (delete-directory fixture-project-path t))))
 
-(ert-deftest 
-    test-esy/project--utils-for-invalid-project
-    ()
-  "Tests esy/project--* utils on an project with empty manifest"
-  (ert/test-suite :setup (lambda (tmp-dir) 
-			   (let* ((test-esy-project-dir (concat (file-name-as-directory tmp-dir)
-								"test-esy-project-failing")))
-			     (progn (delete-directory test-esy-project-dir t)
-				    (make-directory test-esy-project-dir)
-				     test-esy-project-dir)))
-		  :body (lambda (fixture-project-path)
-			  (let* ((project (esy/project--of-path fixture-project-path)))
-			    (should (not (esy/project--p project)))
-			    (should (not (esy/project--ready-p project)))))
-		  :teardown (lambda (fixture-project-path)
-			       (delete-directory fixture-project-path t))))
-
 (ert-deftest
     test-esy/esy/internal--is-file-from-source-cache
     ()

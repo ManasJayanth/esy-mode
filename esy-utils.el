@@ -22,6 +22,20 @@
 ;; system utils
 (defconst esy/utils--windows? (eq system-type 'windows-nt))
 
+;; path utils
+(defun esy/utils--path--normalize (path)
+  "Normalise slashes in the path. Useful for Windows portability"
+  ;; We use file-truename to normalize paths
+  ;; Fixes the tests like the following,
+  ;;
+  ;;  (string= "c:\\Users\\foo\\AppData\\Local\\Temp\\test-esy-project\\esy.json" "c:/Users/foo/AppData/Local/Temp/test-esy-project/esy.json")
+  ;;
+  (replace-regexp-in-string (regexp-quote "\\") "/" path nil 'literal))
+  ;; Alternatively, we could try `file-truename' which works like the unix command
+  ;; `realpath', but clearly more expensive with syscall overhead.
+  ;;
+  ;; (file-truename path)
+  ;;
 
 ;; aio utils
 ;; taken from https://github.com/skeeto/emacs-aio/issues/19#issuecomment-729323058

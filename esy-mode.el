@@ -181,8 +181,8 @@ be used to obtain more info about the project"
 
 (defun esy/project--get-manifest-file-path (project)
   "Returns the path to manifest file"
-  (esy/internal-status--get-manifest-file-path
-   (plist-get project 'json)))
+  (esy/utils--path--normalize (esy/internal-status--get-manifest-file-path
+   (plist-get project 'json))))
 
 (defun esy/project--of-file-path (file-path)
   "Returns an abstract structure that can

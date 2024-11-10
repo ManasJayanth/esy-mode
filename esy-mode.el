@@ -159,6 +159,16 @@ returns project root"
   (let* ((cwd (esy/internal--cwd-of-buffer-or-default buffer)))
     (esy/internal--esy-status cwd)))
 
+;; The following is function doesn't try to guarantee non-existence
+;; of an esy/npm/opam project. Because 'esy status' command works
+;; in any path.
+;; So, we don't return nil signalling missing a project. We, instead,
+;; ask the user for a project root, just in case we're wrong.
+;; This could be re-visited. We need a good project use-case to see
+;; if we infact need to be lenient and fallback to user input.
+;; If we dont find a compelling reason to be so lenient, we could fail
+;; hard.
+;; Considering this, we can remove the test for invalid project.
 (defun esy/project--of-path (project-path)
   "Returns an abstract structure that can later
 be used to obtain more info about the project"

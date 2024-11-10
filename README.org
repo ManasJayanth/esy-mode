@@ -1,3 +1,5 @@
+[[https://github.com/ManasJayanth/esy-mode/actions/workflows/ci.yaml][https://github.com/ManasJayanth/esy-mode/actions/workflows/ci.yaml/badge.svg]]
+
 * esy-mode
 
   =esy-mode= is a minor mode written for [[http://esy.sh][esy]] - the package manager for

@@ -58,14 +58,6 @@ isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
 Common use case is to enable ask lsp client to connect to the server
 (since this can only be done after the esy project is ready)")
 
-(defvar project-db-name
-  "esy-projects.db"
-  "Name of the db file where esy-mode.el persists some data. ATM, it stores projects it was used on")
-
-(defvar esy-disable-esy-mode-cache
-  t
-  "Controls if esy-mode.el should cache user answers and project information")
-
 (defun esy/internal-status--get-manifest-file-path (esy-status)
   "Given the json object of \'esy status\' output,
 it returns the manifest file"

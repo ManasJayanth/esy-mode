@@ -1,3 +1,4 @@
+(add-to-list 'load-path (file-truename "../"))
 (load-file "../esy-mode.el")
 (require 'esy-mode)
 

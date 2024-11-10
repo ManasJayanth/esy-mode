@@ -44,7 +44,7 @@
    way to  get started is to clone the repo and load it
 
    #+BEGIN_SRC shell
-     git clone https://github.com/prometheansacrifice/esy-mode
+     git clone https://github.com/ManasJayanth/esy-mode
    #+END_SRC
 
    #+BEGIN_SRC emacs-lisp

@@ -36,7 +36,7 @@
 
    Example: [[https://github.com/prometheansacrifice/reason-mode/commit/e98f88a24491578461be85b2adf0dc5e354937cb][e98f88a244]]
 
-   TODO: make the tweaks less intrusive. Ping me on Discord if you need help with it.
+   TODO: make the tweaks less intrusive. Ping me on [[https://discord.com/invite/reasonml][Discord]] if you need help with it.
 
 ** Installation
 

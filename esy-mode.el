@@ -477,20 +477,6 @@ esy-command esy-mode-callback"
 	    (esy/project--of-buffer (current-buffer)))))
     (esy/project--get-type project)))
 
-(defun run-cmd-legacy (buffer-name cmd-and-args &optional callback)
-  "Run the cmd" 
-  (interactive) 
-  (lexical-let ((callback-lex callback))
-    (let* ((output-buffer-name buffer-name) 
-	   (process (apply #'start-process (car cmd-and-args) output-buffer-name (car cmd-and-args) (cdr cmd-and-args)))) 
-     
-      (if callback-lex (set-process-sentinel process (lambda (process sentinel-msg) (cond ((string= sentinel-msg "finished\n") (funcall callback-lex))))))
-      (with-current-buffer (process-buffer process) 
-	(require 'shell) 
-	(shell-mode) 
-	(set-process-filter process 'comint-output-filter)) 
-      (switch-to-buffer output-buffer-name))))
-
 (defun run-cmd (buffer-name cmd-and-args callback)
   (let ((compilation-buffer
 		 (compilation-start (string-join cmd-and-args " ") 'compilation-mode)))

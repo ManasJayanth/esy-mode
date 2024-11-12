@@ -37,4 +37,41 @@
   ;; (file-truename path)
   ;;
 
+(defun esy/utils--path--parent (path)
+  "Given a path, returns it's parent path"
+  (if (equal "/" path)
+      "/"
+    (directory-file-name (file-name-directory (directory-file-name path)))))
+
+;; buffer utils
+(defun esy/utils--cwd-of-buffer (buffer)
+  "Given a buffer, it returns the parent directory of it's backing
+  file on disk, or returns `default-directory'. Always returns string
+  path"
+  (let* ((file-path (buffer-file-name buffer)))
+    (if file-path
+	(esy/utils--path--parent (file-name-directory file-path))
+      default-directory)))
+
+;; shell command utils
+(defun esy/cmd-api-sync (cmd-string)
+  "Util to work with esy's CLI API"
+  (string-trim
+   (shell-command-to-string cmd-string)))
+
+
+;; nullable type utils
+(defun esy/utils--default-if-nil (expr default-value)
+  "Returns `default-value' if `expr' is nil"
+  (if expr expr default-value))
+
+;; json utils
+(defun esy/utils--json--parse (json-str)
+  "Creates hash table representing the json string. Returns nil if JSON parsing fails."
+  (let ((json-array-type 'list)
+	(json-key-type 'string)
+	(json-false 'nil)
+	(json-object-type 'hash-table))
+    (json-read-from-string json-str)))
+
 (provide 'esy-utils)

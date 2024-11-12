@@ -29,6 +29,15 @@
   "Command (that the default shell can resolve by itself, if full path
 isn't provided) to package libraries not written in Reason/OCaml. Usually, C")
 
+(defun esy/internal--get-buffer-contents (buffer)
+  "Returns contents of `buffer'"
+  (with-current-buffer buffer (buffer-string)))
+
+(defun esy/internal--pp-command-list (command)
+  "Return a printable string representation of `command' which is usually,
+a list of strings"
+  (string-join command " "))
+
 (aio-defun esy/package--run (args)
   "Runs esy-package command in *esy-package* buffer"
   ;; I will use some kind of async/await macro library

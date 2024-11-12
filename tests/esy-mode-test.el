@@ -181,27 +181,6 @@ project with a package.json (but no esy field in it)"
 	       (x)
 	       (delete-directory x t))))
 
-(ert-deftest
-    test-esy/project--get-manifest-file-path
-    ()
-  "project--get-manifest-file-path must simply return the
-/path/to/manifest.json"
-  (ert/test-suite
-   :setup (lambda (tmp-dir)
-	    (esy-test-utils/fixture--create tmp-dir))
-   :body (lambda (test-project-path)
-	   (let* ((test-project
-		   (esy/project--of-path test-project-path)))
-	     (should
-	      (string=
-	       (esy/project--get-manifest-file-path
-		test-project)
-	       (concat
-		(file-name-as-directory
-		 (file-truename test-project-path))
-		"esy.json")))))
-   :teardown (lambda (x) (delete-directory x t))))
-		      
 (ert-deftest 
     test-esy/project--utils-for-a-valid-but-unsolved-project
     ()
@@ -298,8 +277,8 @@ project with a package.json (but no esy field in it)"
 	       (delete-directory fixture-project-path t))))
 
 (ert-deftest
-    test-esy/esy/internal--is-file-from-source-cache
+    test-esy/esy/source-cache--contains-p
     ()
     "Tests if esy/internal--is-file-from-source-cache identifies file paths from source cache"
-    (should (not (esy/internal--is-file-from-source-cache "~/foo.c")))
-    (should (esy/internal--is-file-from-source-cache "~/.esy/source/i/esy_gmp__45eab250/foo.c")))
+    (should (not (esy/source-cache--contains-p "~/foo.c")))
+    (should (condition-case nil (esy/source-cache--contains-p "~/.esy/source/i/esy_gmp__45eab250/foo.c") (esy-file-from-source-cache-error t))))

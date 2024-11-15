@@ -123,3 +123,5 @@ First checks if file backing the current buffer is a part of an esy project, the
 	(call-interactively #'esy-menu)
       (if (y-or-n-p "You are not in an esy project, would you like to initialize one? ")
           (call-interactively #'esy-init)))))
+
+(provide 'esy)

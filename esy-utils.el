@@ -50,7 +50,7 @@
   path"
   (let* ((file-path (buffer-file-name buffer)))
     (if file-path
-	(esy/utils--path--parent (file-name-directory file-path))
+	(esy/utils--path--parent file-path)
       default-directory)))
 
 ;; shell command utils

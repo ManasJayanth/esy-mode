@@ -39,21 +39,11 @@
 ;;; Code:
 (require 'json)
 
-;; esy libraries
+;; esy utils libraries
 (require 'esy-utils)
 
-;; macros
-(defmacro esy/macro--with-esy-project (buffer binding-project exp)
-  `(let ((project (esy/project--of-buffer ,buffer)))
-    (if (esy/project--p project)
-	(let ((,binding-project project)) ,exp)
-      (message "Doesn't look like an esy project. esy-mode will stay dormant"))))
-
-(defmacro let-esy-project (binding exp)
-  `(let ((,(car binding) ,(cadr binding)))
-     (if (esy/project--p ,(car binding))
-	 ,exp
-       (message "Doesn't look like an esy project. esy-mode will stay dormant"))))
+;; esy core defuns
+(require 'esy-core)
 
 ;; Errors
 (define-error 'esy-mode-error "Internal esy-mode error occurred" 'error)
@@ -75,11 +65,6 @@
   "The callback that can be run once an esy project is initialised.
 Common use case is to enable ask lsp client to connect to the server
 (since this can only be done after the esy project is ready)")
-
-(defun esy/internal-status--get-manifest-file-path (esy-status)
-  "Given the json object of \'esy status\' output,
-it returns the manifest file"
-  (gethash "rootPackageConfigPath" esy-status))
 
 (defun esy/prompt--ask-for-project-root ()
   "Prompts user for project root"
@@ -197,7 +182,7 @@ returns project root"
 be used to obtain more info about the project"
   (let* ((esy-status-json (esy/internal--esy-status project-path))
 	 (manifest-path
-	  (esy/internal-status--get-manifest-file-path esy-status-json))
+	  (esy/status--get-manifest-file-path esy-status-json))
 	 (project-path (if manifest-path
 			   (file-name-directory manifest-path)
 			 (esy/prompt--ask-for-project-root)))) 
@@ -228,17 +213,16 @@ later be used to obtain more info about the esy project"
 (defun esy/project--fetched-p (project)
   "Returns if a given project's sources have been solved and fetched. This
 is necessary for commands like 'esy command-env', 'esy build-plan' etc to work."
-  (gethash "isProjectFetched" (plist-get project 'json)))
+  (esy/status--dependencies-installed-p (plist-get project 'json)))
 
 (defun esy/project--ready-p (project)
   "Returns if a given project is ready for
 development ie. if the tools can be looked in it's sandbox"
-  (gethash "isProjectReadyForDev" (plist-get project 'json)))
+  (esy/status--ready-for-dev-p (plist-get project 'json)))
 
 (defun esy/project--p (project)
   "Returns if a given project structure is a valid esy project"
-  (let ((esy-status-json (plist-get project 'json)))
-    (when esy-status-json (gethash "isProject" esy-status-json))))
+  (esy/status--project-p (plist-get project 'json)))
 
 (defun esy/command-env--of-project (project)
   "Given a project, it returns an abstract structure

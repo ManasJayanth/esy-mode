@@ -42,6 +42,19 @@
 ;; esy libraries
 (require 'esy-utils)
 
+;; macros
+(defmacro esy/macro--with-esy-project (buffer binding-project exp)
+  `(let ((project (esy/project--of-buffer ,buffer)))
+    (if (esy/project--p project)
+	(let ((,binding-project project)) ,exp)
+      (message "Doesn't look like an esy project. esy-mode will stay dormant"))))
+
+(defmacro let-esy-project (binding exp)
+  `(let ((,(car binding) ,(cadr binding)))
+     (if (esy/project--p ,(car binding))
+	 ,exp
+       (message "Doesn't look like an esy project. esy-mode will stay dormant"))))
+
 ;; Errors
 (define-error 'esy-mode-error "Internal esy-mode error occurred" 'error)
 (define-error 'esy-file-from-source-cache-error "File provided is from esy's source cache and cannot be accepted" 'esy-mode-error)
@@ -377,47 +390,59 @@ later be used to obtain more info about the esy project"
 ;; is not happening anytime soon. We could drop this idea of making
 ;; tools work with ml/re files from source cache for now.
 ;;
+
+(defun esy/project--setup-opam (project)
+  "Setup opam tools for `project'"
+  (esy/setup--opam
+   project
+   (lambda
+     (config-plist)
+     (funcall esy-mode-callback 'opam))))
+
+(defun esy/project--setup-esy (project)
+  "Setup esy tools for `project'"
+  (esy/setup--esy
+   project
+   (lambda
+     (config-plist)
+     (funcall esy-mode-callback 'esy))))
+
+(defun esy/load-buffer-locals (buffer)
+  "Detects if project uses esy or opam and sets up the buffer local variables"
+  ;; All npm and opam projects are valid esy projects
+  ;; too! Picking the right package manager is important
+  ;; - we don't want to run `esy` for a user who never
+  ;; intended to. Example: bsb/npm users. Similarly,
+  ;; opam users wouldn't want prompts to run `esy`. Why
+  ;; is prompting `esy i` even necessary in the first
+  ;; place? `esy ocamlmerlin-lsp` needs projects to
+  ;; install/solve deps
+  (esy/macro--with-esy-project
+   buffer
+   project
+   (let* ((project-type (esy/project--get-type project)))
+     (cond ((eq project-type 'opam) (esy/project--setup-opam project))
+	   ((eq project-type 'esy) (esy/project--setup-esy project))))))
+
+(defun esy/project--run-setup (buffer)
+  "Setup buffer locals for the esy/opam project and handle errors if any"
+  (condition-case
+      project-creation-error
+      (esy/load-buffer-locals buffer)
+    (esy-error (message (format "Internal: esy command failed. Reason %s" project-creation-error)))
+    (esy-file-from-source-cache-error (message "File is from esy's source cache. Not doing anything"))))
+
+(defun esy/minor-mode--main (buffer)
+  "Run minor mode"
+  (if (esy/command--available-p)
+      (esy/project--run-setup buffer)
+    (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))
+
 ;;;###autoload
 (define-minor-mode esy-mode
   "Minor mode for esy - the package manager for Reason/OCaml"
   :lighter " esy"
-  (if esy-mode
-  (progn
-    (if
-      (esy/command--available-p)
-	(condition-case
-	    project-creation-error
-	    (let* ((project (esy/project--of-buffer (current-buffer))))
-
-	      (if (esy/project--p project)
-	  (progn
-	    
-	    ;; All npm and opam projects are valid esy projects
-	    ;; too! Picking the right package manager is important
-	    ;; - we don't want to run `esy` for a user who never
-	    ;; intended to. Example: bsb/npm users. Similarly,
-	    ;; opam users wouldn't want prompts to run `esy`. Why
-	    ;; is prompting `esy i` even necessary in the first
-	    ;; place? `esy ocamlmerlin-lsp` needs projects to
-	    ;; install/solve deps
-
-	    (let* ((project-type (esy/project--get-type project)))
-	      (cond ((eq project-type 'opam)
-		     (esy/setup--opam
-		      project
-		      (lambda
-			(config-plist)
-			(funcall esy-mode-callback 'opam))))
-		    ((eq project-type 'esy)
-		     (esy/setup--esy
-		      project
-		      (lambda
-			(config-plist)
-			(funcall esy-mode-callback 'esy)))))))
-	(message "Doesn't look like an esy project. esy-mode will stay dormant")))
-	 (esy-error (message (format "Internal: esy command failed. Reason %s" project-creation-error)))
-	 (esy-file-from-source-cache-error (message "File is from esy's source cache. Not doing anything")))
-     (message "esy command not found. Try 'npm i -g esy' or refer https://esy.sh")))))
+  (if esy-mode (esy/minor-mode--main (current-buffer))))
 
 (provide 'esy-mode)
 ;;; esy.el ends here

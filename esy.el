@@ -36,6 +36,27 @@
 	compilation-directory-matcher
 	'("^\s+\\(# esy-build-package: pwd: \\| esy-build-package: exiting with errors above\\)\\([^\n]+\\)$" (2 . nil))))))))
 
+(defun propertized-flag (flag-value)
+  "Given a boolean value, it turns into a human readable 'yes' | 'no' with appropriate faces"
+  (propertize (if flag-value "yes" "no") 'face (if flag-value '(:foreground "green") '(:foreground "red"))))
+
+(defun esy-status ()
+  "Show status (parsed from 'esy status') of the current buffer"
+  (interactive)
+  (esy/macro--with-esy-project
+   (current-buffer)
+   project
+   (let* ((esy-status (plist-get project 'json))
+	  (manifest (esy/status--get-manifest-file-path esy-status))
+	  (manifest-propertized (propertize manifest 'face 'bold))
+	  (is-project-propertized (propertized-flag (esy/status--project-p esy-status)))
+	  (is-solved-propertized (propertized-flag (esy/status--dependency-constraints-solved-p esy-status)))
+	  (is-fetched-propertized (propertized-flag (esy/status--dependencies-installed-p esy-status)))
+	  (is-ready-for-dev-propertized (propertized-flag (esy/status--ready-for-dev-p esy-status))))
+     (message
+      "manifest: %s valid-project: %s solved: %s dependencies-fetched: %s ready-for-dev: %s"
+      manifest-propertized is-project-propertized is-solved-propertized is-fetched-propertized is-ready-for-dev-propertized))))
+
 (defun esy-pesy ()
   "Run esy pesy"
   (interactive)
@@ -102,6 +123,7 @@
   "Open esy transient menu pop up."
     [["Command"
       ("e" "Build and install"       esy-build-and-install)
+      ("s" "Status"       esy-status)
       ("b" "Build"       esy-build)
       ("i" "Install"       esy-install)
       ("n" "Run npm-release"       esy-npm-release)

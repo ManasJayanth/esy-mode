@@ -41,7 +41,7 @@
   "Given a path, returns it's parent path"
   (if (equal "/" path)
       "/"
-    (directory-file-name (file-name-directory (directory-file-name path)))))
+    (directory-file-name (file-name-directory path))))
 
 ;; buffer utils
 (defun esy/utils--cwd-of-buffer (buffer)

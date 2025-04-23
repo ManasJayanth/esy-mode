@@ -17,6 +17,19 @@
 ;;; Code:
 (require 'transient)
 
+(defun colorize-compilation-buffer ()
+  (ansi-color-apply-on-region compilation-filter-start (point)))
+
+(defconst esy-cli-mode-map compilation-mode-map)
+
+(define-derived-mode esy-cli-mode compilation-mode "esy-cli"
+  "Major mode for the NPM compilation buffer."
+  (use-local-map esy-cli-mode-map)
+  (setq major-mode 'esy-cli-mode)
+  (setq mode-name "esy-cli")
+  (add-hook 'compilation-filter-hook 'colorize-compilation-buffer 0 t)
+  (setq-local truncate-lines t))
+
 (defun run-cmd (buffer-name cmd-and-args callback)
   (let ((compilation-buffer
 		 (compilation-start (string-join cmd-and-args " ") 'compilation-mode)))
